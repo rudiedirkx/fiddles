@@ -1,8 +1,16 @@
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
+p > label,
+p > button {
+	margin-right: .5em;
+}
+
 canvas {
 	background: #eee;
+	max-width: 100%;
 }
 </style>
 
@@ -10,7 +18,8 @@ canvas {
 	<label><input type="checkbox" name="drawing" checked /> Draw?</label>
 	<label><input type="checkbox" name="lines" /> Show lines?</label>
 	<label><input type="checkbox" name="dots" /> Show inner dots?</label>
-	<button id="add">Add spinner</button>
+	Trace: <input type="range" name="trace" min="0" max="500" value="100" />
+	<button id="add">More entropy</button>
 </p>
 
 <canvas width="600" height="600"></canvas>
@@ -20,6 +29,7 @@ canvas {
 var $drawing = $('input[name=drawing]');
 var $lines = $('input[name=lines]');
 var $dots = $('input[name=dots]');
+var $trace = $('input[name=trace]');
 var $add = $('#add');
 
 var $canvas = $('canvas');
@@ -28,12 +38,13 @@ var _w = $canvas.width;
 var _h = $canvas.height;
 
 var spinners = [];
+var trace = [];
 
 class Draw {
-	static dot(x, y) {
+	static dot(x, y, {color = '#c00'} = {}) {
 		[x, y] = this.coord(x, y);
 
-		ctx.fillStyle = '#000';
+		ctx.fillStyle = color;
 		ctx.beginPath();
 		ctx.arc(x, y, 4, 0, Math.PI * 2);
 		ctx.fill();
@@ -85,7 +96,7 @@ class Spinner {
 		}
 
 		if ($lines.checked) {
-			Draw.line(this.x, this.y, this.parent.x, this.parent.y);
+			Draw.line(this.x, this.y, this.parent.x, this.parent.y, {color: '#666'});
 		}
 	}
 
@@ -98,11 +109,10 @@ class Spinner {
 
 function init() {
 	spinners.push(Spinner.makeRandom({x: 0, y: 0}));
-	addSpinner();
-	addSpinner();
-	addSpinner();
-	addSpinner();
-	addSpinner();
+
+	for ( let i = 0; i < 8; i++ ) {
+		addSpinner();
+	}
 
 	$add.onclick = e => addSpinner();
 
@@ -111,11 +121,26 @@ function init() {
 
 function addSpinner() {
 	spinners.push(Spinner.makeRandom(spinners[spinners.length-1]));
+	trace.length = 0;
 }
 
 function step() {
 	spinners.forEach(spinner => spinner.step());
 	spinners.forEach(spinner => spinner.position());
+
+	var spinner = spinners[spinners.length-1];
+	trace.push([spinner.x, spinner.y]);
+	if (trace.length > $trace.value) {
+		trace = trace.slice(-$trace.value);
+	}
+}
+
+function drawTrace() {
+	for ( let i = 1; i < trace.length; i++ ) {
+		let from = trace[i-1];
+		let to = trace[i];
+		Draw.line(from[0], from[1], to[0], to[1], {color: '#faa'});
+	}
 }
 
 function draw() {
@@ -124,7 +149,9 @@ function draw() {
 	Draw.line(0, -_h, 0, _h, {color: '#bbb'});
 	Draw.line(-_w, 0, _w, 0, {color: '#bbb'});
 
-	Draw.dot(0, 0);
+	Draw.dot(0, 0, {color: '#000'});
+
+	$trace.value > 0 && drawTrace();
 
 	spinners.forEach(spinner => {
 		spinner.draw(ctx);
