@@ -9,7 +9,8 @@ canvas {
 <p>
 	<label><input type="checkbox" name="drawing" checked /> Draw?</label>
 	<label><input type="checkbox" name="lines" /> Show lines?</label>
-	<label><input type="checkbox" name="dots" checked /> Show inner dots?</label>
+	<label><input type="checkbox" name="dots" /> Show inner dots?</label>
+	<button id="add">Add spinner</button>
 </p>
 
 <canvas width="600" height="600"></canvas>
@@ -19,6 +20,7 @@ canvas {
 var $drawing = $('input[name=drawing]');
 var $lines = $('input[name=lines]');
 var $dots = $('input[name=dots]');
+var $add = $('#add');
 
 var $canvas = $('canvas');
 var ctx = $canvas.getContext('2d');
@@ -88,7 +90,7 @@ class Spinner {
 	}
 
 	static makeRandom(parent) {
-		var radius = 50 + Math.round(Math.random() * 50);
+		var radius = 20 + Math.round(Math.random() * 30);
 		var speed = ((Math.random() * Math.PI / 20) - Math.PI / 40) * 2.5;
 		return new this(parent, radius, speed);
 	}
@@ -98,6 +100,11 @@ function init() {
 	spinners.push(Spinner.makeRandom({x: 0, y: 0}));
 	addSpinner();
 	addSpinner();
+	addSpinner();
+	addSpinner();
+	addSpinner();
+
+	$add.onclick = e => addSpinner();
 
 	drawing();
 }
