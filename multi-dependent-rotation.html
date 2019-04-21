@@ -1,0 +1,137 @@
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+canvas {
+	background: #eee;
+}
+</style>
+
+<p>
+	<label><input type="checkbox" name="drawing" checked /> Draw?</label>
+	<label><input type="checkbox" name="lines" /> Show lines?</label>
+	<label><input type="checkbox" name="dots" checked /> Show inner dots?</label>
+</p>
+
+<canvas width="600" height="600"></canvas>
+
+<script src="https://cdn.jsdelivr.net/gh/rudiedirkx/rjs@master/rjs.js"></script>
+<script>
+var $drawing = $('input[name=drawing]');
+var $lines = $('input[name=lines]');
+var $dots = $('input[name=dots]');
+
+var $canvas = $('canvas');
+var ctx = $canvas.getContext('2d');
+var _w = $canvas.width;
+var _h = $canvas.height;
+
+var spinners = [];
+
+class Draw {
+	static dot(x, y) {
+		[x, y] = this.coord(x, y);
+
+		ctx.fillStyle = '#000';
+		ctx.beginPath();
+		ctx.arc(x, y, 4, 0, Math.PI * 2);
+		ctx.fill();
+	}
+
+	static line(x1, y1, x2, y2, {color = '#000'} = {}) {
+		[x1, y1] = this.coord(x1, y1);
+		[x2, y2] = this.coord(x2, y2);
+
+		ctx.lineWidth = 1;
+		ctx.strokeStyle = color;
+		ctx.beginPath();
+		ctx.moveTo(x1, y1);
+		ctx.lineTo(x2, y2);
+		ctx.stroke();
+	}
+
+	static coord(x, y) {
+		return [
+			_w/2 + x,
+			_h - _h/2 - y,
+		];
+	}
+}
+
+class Spinner {
+	constructor(parent, radius, speed) {
+		this.x = this.y = 0;
+
+		this.parent = parent;
+		this.radius = radius;
+		this.speed = speed;
+
+		this.angle = 0;
+	}
+
+	step() {
+		this.angle += this.speed;
+	}
+
+	position() {
+		this.x = this.parent.x + this.radius * Math.sin(this.angle);
+		this.y = this.parent.y + this.radius * Math.cos(this.angle);
+	}
+
+	draw() {
+		if ($dots.checked || this == spinners[spinners.length-1]) {
+			Draw.dot(this.x, this.y);
+		}
+
+		if ($lines.checked) {
+			Draw.line(this.x, this.y, this.parent.x, this.parent.y);
+		}
+	}
+
+	static makeRandom(parent) {
+		var radius = 50 + Math.round(Math.random() * 50);
+		var speed = ((Math.random() * Math.PI / 20) - Math.PI / 40) * 2.5;
+		return new this(parent, radius, speed);
+	}
+}
+
+function init() {
+	spinners.push(Spinner.makeRandom({x: 0, y: 0}));
+	addSpinner();
+	addSpinner();
+
+	drawing();
+}
+
+function addSpinner() {
+	spinners.push(Spinner.makeRandom(spinners[spinners.length-1]));
+}
+
+function step() {
+	spinners.forEach(spinner => spinner.step());
+	spinners.forEach(spinner => spinner.position());
+}
+
+function draw() {
+	$canvas.width = _w;
+
+	Draw.line(0, -_h, 0, _h, {color: '#bbb'});
+	Draw.line(-_w, 0, _w, 0, {color: '#bbb'});
+
+	Draw.dot(0, 0);
+
+	spinners.forEach(spinner => {
+		spinner.draw(ctx);
+	});
+}
+
+function drawing() {
+	if ($drawing.checked) {
+		step();
+		draw();
+	}
+
+	requestAnimationFrame(drawing);
+}
+
+$(init);
+</script>
