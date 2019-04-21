@@ -1,0 +1,40 @@
+<script>
+function test(name) {
+    var Y = Math.random() > 0.4;
+    console.log(name, Y);
+    return Y;
+}
+
+function clickSpeed(resolve, reject) {
+    var interval = setInterval(function(work) {
+        try {
+            var current = work.shift();
+            if(!test(current)) { // Do current step's "work"
+                clearInterval(interval); // reject on failure and clear interval
+                console.log('rejecting...', current);
+                reject();
+            }
+            else if(!work.length) { // If this was the last step
+                clearInterval(interval); // resolve (success!) and clear interval
+                console.log('resolving...');
+                resolve();
+            }
+        }
+        catch(ex) { // reject on exceptions as well
+            reject(ex);
+            clearInterval(interval);
+        }
+    }, 500, ['one', 'two', 'three']); // "work" array
+}
+
+var done = function(changed) {
+    console.log('END', changed);
+    console.log("\n\n\n");
+};
+
+
+clickSpeed(done.bind(this, ['direct', true]), done.bind(this, ['direct', false]));
+
+new Promise(clickSpeed).then(done.bind(this, ['Promise', true]), done.bind(this, ['Promise', false]));
+
+</script>

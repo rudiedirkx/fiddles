@@ -1,0 +1,72 @@
+<script>
+Array.prototype.flatten = function(){
+    var length = this.length
+    for(var i = 0; i < length; ++i){
+        var elem = this.shift();
+
+        if( elem instanceof Array){
+            elem.flatten();
+            for(var j = 0; j < elem.length; ++j){
+                this.push(elem[j]);
+            }
+        } else{
+            this.push(elem);
+        }
+    }
+}
+
+function local() {
+    console.log('start:', 'local');
+    return new Promise(function(resolve) {
+        var d = Math.round(Math.random() * 2000);
+        setTimeout(function(d) {
+            console.log('done:', 'local', d);
+            resolve('a');
+        }, d, d);
+    });
+}
+
+function sync() {
+    console.log('start:', 'sync');
+    return new Promise(function(resolve) {
+        var d = Math.round(Math.random() * 2000);
+        setTimeout(function(d) {
+            console.log('done:', 'sync', d);
+            if ( Math.random() > 0.5 ) {
+                var spawns = 1 + ~~(5 * Math.random()),
+                    ps = [];
+                console.log('but need', spawns, 'more...');
+                for ( var i=0; i<spawns; i++ ) {
+                    console.log('start:', 'sync', i);
+                    var d2 = Math.round(2 * d * Math.random());
+                    ps.push(new Promise(function(resolve2) {
+                        setTimeout(function(i, d2) {
+                            console.log('done:', 'sync', i, d2);
+                            resolve2('b');
+                        }, d2, i, d2);
+                    }));
+                }
+                resolve(Promise.all(ps));
+            }
+            else {
+                resolve('b');
+            }
+        }, d, d);
+    });
+}
+
+document.onclick = function() {
+    console.time('ALL LOADED');
+    Promise.all([local(), sync()])
+    .then(function(data) {
+        data.flatten();
+        console.log('DONE', data);
+
+        console.timeEnd('ALL LOADED');
+        console.log('');
+    })
+    ;
+};
+document.onclick();
+
+</script>

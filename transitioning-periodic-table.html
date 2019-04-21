@@ -1,0 +1,138 @@
+<style>
+p {
+    margin: 0 0 10px;
+}
+.container {
+    width: 690px;
+    height: 340px;
+    border: solid 2px #000;
+    position: relative;
+}
+.container > div {
+    width: 60px;
+    height: 60px;
+    float: left;
+    margin: 10px 0 0 10px;
+    line-height: 30px;
+    font-size: 20px;
+    text-align: center;
+    -webkit-transition: all 500ms ease-out;
+    -moz-transition: all 500ms ease-out;
+}
+.container > div:nth-child(-n+10) {
+    margin-top: 0;
+}
+.container > div:nth-child(10n-9) {
+    margin-left: 0;
+}
+.sorted > div {
+    position: absolute;
+    margin: 0;
+}
+div[data-type="1"] {
+    background: pink;
+}
+div[data-type="2"] {
+    background: yellow;
+}
+div[data-type="3"] {
+    background: lime;
+}
+div[data-type="4"] {
+    background: red;
+    color: white;
+}
+div[data-type="5"] {
+    background: blue;
+    color: white;
+}
+</style>
+
+<p>
+    Sort by:
+    <a href data-sort="order">order</a> |
+    <a href data-sort="type">type</a> |
+    <a href data-sort="age">age</a>
+</p>
+
+<div class=container></div>
+
+<script>
+/* config */
+var cW = 10,
+    cH = 5,
+    bW = 60,
+    bH = 60,
+    spacing = 10;
+
+/* grid helpers */
+function rnd(min, max) {
+    return Math.round((max - min) * Math.random()) + min;
+}
+
+function i2a(i) {
+    var alpha = 'ABCDEFGHKLMNOPQRSTUVWXYZ';
+    return alpha[Math.floor(i / alpha.length)] + alpha[i % alpha.length];
+}
+
+function pos(i) {
+    var y = Math.floor(i / cW),
+        x = i % cW;
+    var top = (spacing + bH) * y,
+        left = (spacing + bW) * x;
+
+    return {
+        left: left,
+        top: top
+    };
+}
+window.pos = pos;
+
+function css(el, values) {
+    for (prop in values) {
+        el.style[prop] = values[prop] + 'px';
+    }
+    return el;
+}
+
+/* building grid */
+var container = document.querySelector('.container');
+els = [];
+
+for (var y = 0; y < cH; y++) {
+    for (var x = 0; x < cW; x++) {
+        var div = document.createElement('div');
+        div.dataset.order = y * cW + x;
+        div.dataset.type = rnd(1, 5);
+        div.dataset.age = rnd(1, 99);
+        div.innerHTML = i2a(div.dataset.order) + '<br>' + div.dataset.age;
+
+        container.appendChild(div);
+        els.push(div);
+
+        css(div, pos(~~div.dataset.order));
+    }
+}
+container.classList.add('sorted');
+
+/* sorting helpers */
+function A(list) {
+    return [].slice.call(list);
+}
+
+function sort(key) {
+    els.sort(function(a, b) {
+        return ~~a.dataset[key] - ~~b.dataset[key];
+    }).forEach(function(el, i) {
+        css(el, pos(i));
+    });
+}
+
+/* events */
+A(document.querySelectorAll('a[data-sort]')).forEach(function(a) {
+    a.addEventListener('click', function(e) {
+        e.preventDefault();
+        sort(this.dataset.sort);
+    }, false);
+});
+</script>

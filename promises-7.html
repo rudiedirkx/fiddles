@@ -1,0 +1,17 @@
+<script>
+wait = ms => {
+  return new Promise(resolve => {
+    setTimeout(() => {
+      console.log('done', ms);
+      resolve(ms);
+    }, 10*ms);
+  })
+};
+
+tripleWait = () => {
+  return wait(200).then(data => wait(2*data)).then(data => wait(2*data));
+};
+
+Promise.all([wait(1000), tripleWait()])
+  .then(datas => console.log(datas));
+</script>

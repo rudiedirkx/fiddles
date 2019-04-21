@@ -1,0 +1,50 @@
+<style>
+p {
+    margin: 0 0 15px;
+}
+#bg {
+    width: 150px;
+    height: 150px;
+    background-color: yellow;
+    -webkit-transition: background-color 2s linear;
+    -moz-transition: background-color 2s linear;
+}
+</style>
+
+<p>Well... Click on the square!</p>
+
+<table>
+    <tr>
+        <td><div id="bg"></div></td>
+        <td id="log"></td>
+    </tr>
+</table>
+
+<p>The morale: you can query an element's background while it's transitioning: niiiice.</p>
+
+<script>
+var c = ['red', 'green', 'blue', 'purple', 'black', 'yellow'],
+    bg = document.getElementById('bg'),
+    log = document.getElementById('log'),
+    lastColor = 'yellow';
+
+function color(not) {
+    var rnd = c[parseInt(Math.random()*c.length)];
+    if ( rnd == not ) {
+        return color(not);
+    }
+    return rnd;
+}
+
+bg.addEventListener('click', function(e) {
+    lastColor = this.style.backgroundColor = color(lastColor);
+}, false);
+
+function css(obj, prop) {
+    return document.defaultView.getComputedStyle(obj, null).getPropertyValue(prop);
+}
+
+setInterval(function() {
+    log.innerHTML = css(bg, 'background-color');
+}, 50);
+</script>

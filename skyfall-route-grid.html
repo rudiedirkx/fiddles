@@ -1,0 +1,160 @@
+<style>
+canvas {
+    background: #fff;
+}
+:checked ~ canvas {
+    width: 500px;
+}
+</style>
+
+<input type=checkbox id=scale><label for=scale> Scale?</label><br>
+
+<canvas id=canvas width=1000 height=1000></canvas>
+
+<script>
+function clone(obj) {
+    return JSON.parse(JSON.stringify(obj));
+}
+
+function paintLine(ax, ay, bx, by) {
+    ctx.beginPath();
+    ctx.moveTo(ax, ay);
+    ctx.lineTo(bx, by);
+    ctx.lineWidth = 2;
+    ctx.stroke();
+}
+
+function paintPause(x, y) {
+    if ( pauseSize > 1 ) {
+        ctx.beginPath();
+        ctx.arc(x, y, pauseSize, 0, Math.PI*2);
+        ctx.fillStyle = '#000000';
+        ctx.fill();
+    }
+}
+
+function paintSquare(x, y, hilite) {
+    var xo = x/squareSize,
+        yo = y/squareSize;
+    ctx.fillStyle = hilite ? "#000000" : ( 0 == (xo+yo)%2 ? "#dddddd" : "#eeeeee" );
+    ctx.fillRect(x, y, squareSize, squareSize);
+}
+
+function XBetweenAB(x, a, b) {
+    return a <= x && x <= b;
+}
+function lineCoversSquare(ls, le, ss, se) {
+    lsx = ls[0];
+    lsy = ls[1];
+    lex = le[0];
+    ley = le[1];
+    ssx = ss[0];
+    ssy = ss[1];
+    sex = se[0];
+    sey = se[1];
+
+    return lsy < sey && ley > ssy && (lsx < sex && lex > ssx || lex < sex && lsx > ssx);
+}
+
+var DEG_TO_RAD = Math.PI/180,
+    RAD_TO_DEG = 1/DEG_TO_RAD;
+
+// Context
+var canvas = document.getElementById('canvas'),
+    ctx = canvas.getContext('2d');
+console.log(ctx);
+
+var start = [100, 0],
+    loc = clone(start),
+    initDirection = 155,
+    direction = clone(initDirection),
+    route = [[loc[0], loc[1], direction]],
+    pauseSize = 0,
+    speed = 30,
+    deviation = 40,
+    maxDeviation = 55,
+    squareSize = 10,
+    squareMargin = 0,
+    squares = [];
+
+// Process
+// Draw squares
+for ( var y=0; y<1000; y+=squareSize+squareMargin ) {
+    for ( var x=0; x<1000; x+=squareSize+squareMargin ) {
+        paintSquare(x, y);
+        squares.push([x, y]);
+    }
+}
+
+// Draw route
+paintPause(start[0], start[1]);
+for ( var i=0; i<500; i++ ) {
+    // Calc new location
+    var newX = Math.round(loc[0] + speed * Math.sin(direction * DEG_TO_RAD)),
+        newY = Math.round(loc[1] - speed * Math.cos(direction * DEG_TO_RAD));
+
+    // Draw pause
+    paintPause(newX, newY);
+
+    // Draw line
+    paintLine(loc[0], loc[1], newX, newY);
+
+    // Change course
+    var dirChange = Math.round(deviation * (Math.random() - 0.5));
+    direction += dirChange;
+    if (
+        direction > (initDirection + maxDeviation) ||
+        direction < (initDirection - maxDeviation)
+    ) {
+        direction -= 2 * dirChange;
+    }
+
+    // Save loc and route
+    loc = [newX, newY, direction];
+    route.push(loc);
+
+    if ( newX > canvas.width || newY > canvas.height ) {
+        console.log('broke after i=' + i);
+        break;
+    }
+}
+
+// Now match route vs squares... How? What's efficient? Should work for any speed and squareSize.
+
+matchV2();
+
+// Version 2
+function matchV2() {
+    for ( var l=0, L=route.length-1; l<L; l++ ) {
+        var ls = route[l],
+            le = route[l+1];
+        squares.forEach(function(ss) {
+            var se = [ ss[0]+squareSize, ss[1]+squareSize ];
+            if ( lineCoversSquare(ls, le, ss, se) ) {
+                paintSquare(ss[0], ss[1], true);
+            }
+        });
+    }
+}
+
+// Version 1
+function matchV1() {
+    var squaresPerSpeed = Math.max(1, speed / squareSize),
+        squareSpeed = speed / squaresPerSpeed;
+    for ( var l=0, L=route.length; l<L; l++ ) {
+        var loc = route[l],
+            x = loc[0],
+            y = loc[1],
+            dir = loc[2];
+        for ( var p=0; p<squaresPerSpeed; p++ ) {
+            // Find square on [x, y]
+            var sx = Math.floor(x / squareSize) * squareSize,
+                sy = Math.floor(y / squareSize) * squareSize;
+            paintSquare(sx, sy, true);
+
+            x += speed * Math.sin(dir * DEG_TO_RAD);
+            y -= speed * Math.cos(dir * DEG_TO_RAD);
+        }
+    }
+}
+</script>

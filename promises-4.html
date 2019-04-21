@@ -1,0 +1,25 @@
+<script>
+function save(id) {
+    console.log('start:', id);
+    var p = Promise.defer(),
+        d = Math.round(Math.random() * 2000);
+    setTimeout(function() {
+        var fail = String(d).slice(-1) == '0';
+        console.log('done:', id, d);
+        fail ? p.reject(d + ' ends with "0"') : p.resolve(d);
+    }, d);
+    return p.promise;
+}
+
+document.onclick = function() {
+    Promise.all([save('a'), save('b'), save('c')]).then(function(xs) {
+        console.log('DONE', xs);
+    }, function(reason) {
+        console.log('FAIL', reason);
+    }).then(function() {
+        console.log('');
+    });
+};
+document.onclick();
+
+</script>

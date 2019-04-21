@@ -1,0 +1,57 @@
+<style>
+.target {
+	display: inline-block;
+	border: solid 2px black;
+	padding: 25px;
+	width: 100px;
+	height: 100px;
+}
+.target:focus {
+	background-color: lime;
+}
+
+#debug {
+	list-style: none;
+	padding: 0;
+	display: block;
+}
+#debug li {
+	display: inline-block;
+	background-color: #eee;
+	padding: 5px;
+	line-height: 1.5;
+	margin-bottom: 5px;
+}
+#debug li + li {
+	margin-left: 5px;
+}
+</style>
+
+<div class="target" tabindex="0" data-ev="keyup">keyup</div>
+<div class="target" tabindex="0" data-ev="keypress">keypress</div>
+
+<ul id="debug"></ul>
+
+<script>
+const targets = document.querySelectorAll('.target');
+const debug = document.querySelector('#debug');
+var pause = 0;
+
+targets.forEach(el => el.addEventListener(el.dataset.ev, function(e) {
+	console.log(e.type, e);
+	debugChar(e.type, e.keyCode, String.fromCharCode(e.keyCode).trim(), e.key);
+
+	clearTimeout(pause);
+	pause = setTimeout(() => debug.innerHTML += '<br>', 800);
+}));
+
+function debugChar(type, keyCode, keyCodeChar, key) {
+	var li = '';
+	li += '<li>';
+	li += keyCode + '<br>';
+	li += keyCodeChar + '<br>';
+	li += key + '<br>';
+	li += '</li>';
+	debug.innerHTML += li;
+}
+</script>

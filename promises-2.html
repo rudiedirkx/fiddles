@@ -1,0 +1,35 @@
+<script>
+function asyncFunc(n) {
+  return new Promise(function(resolve) {
+    console.log('Starting:', n);
+    setTimeout(function() {
+      resolve(n);
+    }, 2000);
+  });
+}
+
+// Wrong
+console.time('[wrong] All 3 asyncs done');
+asyncFunc(1)
+  .then(asyncFunc(2))
+  .then(asyncFunc(3))
+  .catch(function(reason) {
+    console.log('catch', reason);
+  })
+  .then(function() {
+    console.timeEnd('[wrong] All 3 asyncs done');
+  });
+
+// Right
+console.time('[right] All 3 asyncs done');
+asyncFunc(1)
+  .then(asyncFunc.bind(this, 2))
+  .then(asyncFunc.bind(this, 3))
+  .catch(function(reason) {
+  console.log('catch', reason);
+})
+  .then(function() {
+  console.timeEnd('[right] All 3 asyncs done');
+});
+
+</script>

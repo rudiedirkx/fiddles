@@ -1,0 +1,34 @@
+<script>
+// LOGIC //
+function invokelize(items) {
+  return new Proxy([...items], {
+    get(target, property, receiver) {
+      if ( target[0] && !target[0][property] ) {
+        throw new Error(`Invalid method ${property}`);
+      }
+
+      return function(...args) {
+        target.forEach(item => item[property](...args));
+        return target;
+      };
+    }
+  });
+}
+
+// TEST METHODS //
+HTMLElement.prototype.addClass = function(cn) {
+  this.classList.add(cn);
+};
+HTMLElement.prototype.removeClass = function(cn) {
+  this.classList.remove(cn);
+};
+
+// Create invokable list //
+window.els = invokelize(document.querySelectorAll('body *'));
+console.log('els', els);
+
+// Invoke magically through Proxy
+console.log('+boele', els.addClass('boele'));
+console.log('+bla', els.addClass('bla'));
+console.log('-boele', els.removeClass('boele'));
+</script>

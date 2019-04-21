@@ -1,0 +1,138 @@
+<style>
+p > :nth-child(n+3) {
+    margin-left: 15px;
+}
+#dur {
+    display: inline-block;
+    min-width: 3em;
+}
+canvas {
+    background: #eee;
+}
+</style>
+
+<canvas id=c width=500 height=500></canvas>
+
+<script src="bezier.js"></script>
+<script>
+// Constants
+var CIRCLE = 2 * Math.PI,
+    DEG_TO_RAD = CIRCLE / 360,
+    RAD_TO_DEG = 1 / DEG_TO_RAD;
+
+
+// Config
+var _rotateSpeed = 120, // deg/sec
+    _switchSpeed = 1.5, // sec
+    _easing = Bezier(0.75, 0.25, 0.25, 0.75);
+
+
+// Context
+var elCanvas = $('#c'),
+    ctx = elCanvas.getContext('2d'),
+    _w = elCanvas.width,
+    _h = elCanvas.height;
+
+
+// State
+var animates = {T: 0, d: +1, a: 0, s: 120, t: [70, 140, 170, 210, 270], c: []},
+    start = Date.now();
+
+ctx.lineWidth = 1;
+
+
+// Start processes
+_init();
+
+
+// Logic
+function _init() {
+    // Random track colors
+    for ( i=0, L=animates.t.length; i<L; i++ ) {
+        animates.c.push(_rc());
+    }
+
+    // Start continuous drawing
+    _iterate();
+
+    // Start animating track switches
+    setTimeout("_switch(0, 1, 1);", 500);
+}
+
+function _iterate() {
+    // Draw
+    _draw();
+
+    // Change state
+    animates.a -= _rotateSpeed / 60 * DEG_TO_RAD;
+
+    requestAnimationFrame(_iterate);
+}
+
+function _switch(a, b, alive) {
+    var from = a,
+        to = b,
+        delta = (animates.t[b] - animates.t[a]) / 2;
+    if ( delta < 0 ) {
+        var c = a; a = b; b = c; delta *= -1;
+    }
+    Animate(animates.t, a, animates.t[a]+delta, _switchSpeed, function() {
+        Animate(animates.t, a, animates.t[a]-delta, _switchSpeed, function() {
+            if ( alive) {
+                animates.t[to+animates.d] || (animates.d *= -1);
+                _switch(to, to+animates.d, alive);
+            }
+        }, _easing);
+        animates.T = to;
+    }, _easing);
+    Animate(animates.t, b, animates.t[b]-delta, _switchSpeed, function() {
+        Animate(animates.t, b, animates.t[b]+delta, _switchSpeed, null, _easing);
+    }, _easing);
+}
+
+function _draw() {
+    _clear();
+
+    for ( var t=0, L=animates.t.length; t<L; t++ ) {
+        _track(t);
+    }
+
+    _train(animates.a, animates.T);
+}
+
+function _track(i) {
+    ctx.beginPath();
+    ctx.arc(_w/2, _h/2, animates.t[i], 0, CIRCLE);
+    ctx.strokeStyle = animates.c[i];
+    ctx.lineWidth = 3;
+    ctx.stroke();
+}
+
+function _train(a, i) {
+    var r = animates.t[i],
+        x = _w/2 + r * Math.sin(a),
+        y = _h/2 + r * Math.cos(a);
+
+    ctx.beginPath();
+    ctx.arc(x, y, 8, 0, CIRCLE);
+    ctx.fillStyle = animates.c[i];
+    ctx.fill();
+}
+
+function _clear() {
+    ctx.clearRect(0, 0, _w, _h);
+}
+
+function _rc() {
+    return '#' + _rh() + _rh() + _rh();
+}
+
+function _rh() {
+    return (16+parseInt(Math.random()*224)).toString(16);
+}
+
+function $(sel) {
+    return document.querySelector(sel);
+}
+
+</script>

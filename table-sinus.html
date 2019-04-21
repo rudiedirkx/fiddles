@@ -1,0 +1,61 @@
+<style>
+td { width: 10px; height: 10px; border: 1px solid grey; }
+.x { background-color: #aaa }
+</style>
+
+<table id=canvas></table>
+
+<script>
+// y = Math.cos(Math.asin(.5))
+
+var _w = 100, _h = 10, stretch = 1.8;
+
+var tbl = document.getElementById('canvas');
+
+init();
+
+var offset = 0;
+draw();
+var iv = setInterval(function() {
+    offset++;
+    draw();
+}, 100);
+
+function draw() {
+    clear();
+
+    // draw sinus
+    for ( var i=0; i<_w; i++ ) {
+        var x = i/Math.PI/stretch + offset/5,
+            y = Math.cos(x),
+            h = Math.round(_h/2 * (y+1)),
+            ty = _h - h;
+
+        for ( ; ty<=_h; ty++ ) {
+            tbl.rows[ty].cells[i].classList.add('x');
+        }
+    }
+}
+
+function init() {
+    // empty cells
+    for ( var i=0; i<_h+1; i++ ) {
+        var tr = tbl.insertRow(0);
+        for ( var j=0; j<_w; j++ ) {
+            tr.insertCell(0);
+        }
+    }
+}
+
+function clear() {
+    // undo class x
+    var tds = tbl.getElementsByTagName('td'), i = tds.length;
+    while (i--) {
+        tds[i].classList.remove('x');
+    }
+}
+
+document.onclick = function() {
+    clearInterval(iv);
+};
+</script>

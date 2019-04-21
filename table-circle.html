@@ -1,0 +1,56 @@
+<style>
+td { width: 10px; height: 10px; border: 1px solid grey; }
+.x { background-color: #aaa }
+</style>
+
+<table id=canvas></table>
+
+<script>
+// y = Math.cos(Math.asin(.5))
+
+var zoom = 20;
+
+var tbl = document.getElementById('canvas');
+
+draw(zoom);
+setTimeout(function() {
+    draw(zoom/2);
+}, 2000);
+
+function draw(zoom) {
+    // clear table
+    tbl.innerHTML = '';
+
+    // empty cells
+    for ( var i=0; i<=2*zoom; i++ ) {
+        var tr = tbl.insertRow(0)
+        for ( var j=0; j<=2*zoom; j++ ) {
+            tr.insertCell(0)
+        }
+    }
+
+    // walk -x..+x
+    for ( var i=-zoom; i<=zoom; i++ ) {
+        var x = i/zoom,
+            y = Math.cos(Math.asin(x)),
+            h = Math.floor(y*zoom);
+//console.log(x, y, h);
+
+        var tx = i+zoom,
+            ty1 = zoom-h,
+            ty2 = zoom+h;
+//console.log(tx, ty1);
+
+        // color vertically
+        tbl.rows[ty2].cells[tx].classList.add('x');
+        if ( ty1 != ty2 ) {
+            for ( var ty=ty1; ty<ty2; ty++ ) {
+                tbl.rows[ty].cells[tx].classList.add('x');
+            }
+        }
+    }
+}
+
+// OMG, this is so much easier with Canvas =)
+
+</script>

@@ -1,0 +1,27 @@
+<textarea autofocus></textarea>
+
+<script>
+const inp = document.querySelector('textarea');
+
+inp.addEventListener('paste', function(e) {
+	e.preventDefault();
+
+	debugger;
+	console.log(e.dataTransfer, e.clipboardData);
+	for (let item of e.clipboardData.items) {
+		console.log(item.getAsString(str => console.log(str)));
+	}
+});
+
+document.addEventListener('dragover', function(e) {
+	e.preventDefault();
+});
+document.addEventListener('drop', function(e) {
+	e.preventDefault();
+
+	debugger;
+	for (let item of e.dataTransfer.items) {
+		console.log(item.getAsString(str => console.log(str)));
+	}
+});
+</script>

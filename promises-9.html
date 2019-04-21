@@ -1,0 +1,24 @@
+<script>
+function wait() {
+  return new Promise(function(resolve, reject) {
+    var T = parseInt(Math.random() * 200);
+    setTimeout(function() {
+      var OK = Math.random() > 0.5;
+      OK ? resolve(T) : reject(T);
+    }, T);
+  });
+}
+
+function log(type, data) {
+  console[type](type, data);
+  return data;
+}
+function logger(type) {
+  return data => log(type, data);
+}
+
+wait()
+  .then(logger('log'), logger('warn'))
+  .finally(x => console.log('finally', x));
+
+</script>

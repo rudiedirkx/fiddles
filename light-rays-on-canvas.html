@@ -1,0 +1,325 @@
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+canvas {
+    background: #eee;
+}
+
+</style>
+
+<canvas width="500" height="500"></canvas>
+
+<script src="https://cdn.jsdelivr.net/gh/rudiedirkx/rjs@master/rjs.js"></script>
+<script>
+var $canvas = $('canvas', 1),
+    ctx = $canvas.getContext('2d'),
+    _w = $canvas.width,
+    _h = $canvas.height,
+    listener = 'mousemove';
+
+var defaultLineWidth = 2,
+    lineWidth = defaultLineWidth,
+    defaultStrokeColor = '#cccccc',
+    inited = false,
+    saveStructure = false,
+    boxes = [],
+    corners = {},
+    lines = [];
+
+var draw = {
+    line: function(from, to, color, width) {
+        //console.log('drawing line from:', from, ' to:', to);
+        ctx.lineWidth = width || lineWidth;
+        ctx.strokeStyle = color || defaultStrokeColor;
+        ctx.beginPath();
+        ctx.moveTo(from.x, from.y);
+        ctx.lineTo(to.x, to.y);
+        ctx.stroke();
+
+        if ( saveStructure ) {
+            var f = from.round().join('_'),
+                t = to.round().join('_');
+            corners[f] || (corners[f] = from);
+            corners[t] || (corners[t] = to);
+
+            lines.push(new Line2D(from, to));
+        }
+    },
+    box: function(box, color, width) {
+        //console.log('drawing box:', box);
+        draw.line(box.topleft, box.topright, color, width);
+        draw.line(box.topright, box.bottomright, color, width);
+        draw.line(box.bottomright, box.bottomleft, color, width);
+        draw.line(box.bottomleft, box.topleft, color, width);
+    },
+    clear: function() {
+        $canvas.width = _w;
+    },
+
+    reset: function() {
+        draw.clear();
+        draw.structure();
+    },
+    structure: function() {
+        var initial = !inited;
+        inited = true;
+
+        if ( initial ) {
+            corners['0_0'] = new Coords2D(0, 0);
+            corners[_w+'_0'] = new Coords2D(_w-1, 0);
+            corners[_w+'_'+_h] = new Coords2D(_w-1, _h-1);
+            corners['0_'+_h] = new Coords2D(0, _h-1);
+
+            boxes.push(new Box2D(new Coords2D(100, 100), new Coords2D(200, 200)).retard());
+            boxes.push(new Box2D(new Coords2D(150, 250), new Coords2D(250, 350)).retard());
+            boxes.push(new Box2D(new Coords2D(350, 200), new Coords2D(450, 300)).retard());
+        }
+
+        for (var y=50; y<_h; y+=50) {
+            draw.line({x: 0, y:y}, {x: _w, y:y}, 'white');
+        }
+        for (var x=50; x<_w; x+=50) {
+            draw.line({x: x, y:0}, {x: x, y:_h}, 'white');
+        }
+
+        saveStructure = initial;
+        r.each(boxes, function(box) {
+            box.draw();
+        });
+        saveStructure = false;
+    }
+};
+
+function init() {
+    draw.reset();
+    attachListeners();
+
+    // debug();
+}
+
+function attachListeners() {
+    $canvas.on(listener, function(e) {
+        var _time = Date.now();
+
+        var mouse = e.subjectXY;
+
+        draw.reset();
+
+        var done = 0;
+        r.each(corners, function(corner) {
+            //if ( ++done != 2 ) return;
+
+            var ray = new Line2D(mouse, corner);
+            //var rayBox = ray.boundingBox();
+            //rayBox.draw('blue', 1);
+
+            var closest = null;
+            r.each(lines, function(line) {
+                var c = ray.crosses(line, true);
+                if ( c ) {
+                    //console.log(c);
+                    if ( !closest || closest.t1 > c.t1 ) {
+                        closest = c;
+                        closest.line = line;
+                    }
+                }
+            });
+
+            var visibleRay = ray;
+            if ( closest ) {
+                // closest.line.draw('green');
+                visibleRay = new Line2D(mouse, closest);
+            }
+            if ( visibleRay.touchesCorner() ) {
+                visibleRay /*.shorten()*/ .draw('red');
+            }
+        });
+
+        console.log('  -- That took ' + (Date.now()-_time) +  'ms');
+    });
+}
+
+
+
+r.extend(Coords2D, {
+    round: function() {
+        return new Coords2D(Math.round(this.x), Math.round(this.y));
+    }
+});
+
+
+
+function Line2D(from, to) {
+    this.from = from;
+    this.to = to;
+}
+r.extend(Line2D, {
+    draw: function(color, width) {
+        draw.line(this.from, this.to, color || 'green', width);
+    },
+
+    touchesCorner: function() {
+        var from = this.from.round().join('_');
+        return corners[from] || corners[ this.to.round().join('_') ];
+    },
+
+    shorten: function() {
+        var dy = this.to.y - this.from.y,
+            dx = this.to.x - this.from.x,
+            dir = Math.atan(dy / dx);
+        var length = Math.sqrt( Math.pow(dx, 2) + Math.pow(dy, 2) ),
+            cutLength = Math.min(length, 10);
+        var ddx = Math.abs(Math.cos(dir) * cutLength),
+            ddy = Math.abs(Math.sin(dir) * cutLength);
+        console.log(ddx, ddy);
+        this.from.x += this.from.x > this.to.x ? -ddx : ddx;
+        this.from.y += this.from.y > this.to.y ? -ddy : ddy;
+        return this;
+    },
+
+    crosses: function(line2, checkBounds) {
+        var line1 = this;
+        var x1 = line1.from.x,
+            y1 = line1.from.y,
+            a1 = line1.to.x - line1.from.x,
+            b1 = line1.to.y - line1.from.y;
+        var x2 = line2.from.x,
+            y2 = line2.from.y,
+            a2 = line2.to.x - line2.from.x,
+            b2 = line2.to.y - line2.from.y;
+
+        if ( a2 * b1 == a1 * b2 ) {
+            //console.log('NO MATCH, ab = ab, ' + a2 + '*' + b1 + ' = ' + a1 + '*' + b2);
+            return null;
+        }
+
+        var y = (b1 * ( (a2*y2) + b2*(x1-x2) ) - a1*b2*y1) / ( b1 * a2 - a1 * b2 );
+        //console.log('y', y);
+
+        var t1 = (y-y1) / b1 || -1,
+            t2 = (y-y2) / b2 || -1;
+
+        if ( checkBounds ) {
+            if ( t1 <= 0 || t1 >= 1 || t2 <= 0 || t2 >= 1 ) {
+                //console.log('NO MATCH, out of bounds');
+                return null;
+            }
+        }
+
+        var x = a1 / b1 * (y-y1) + x1;
+        //console.log('x', x);
+
+        var c = new Coords2D(x, y);
+        c.t1 = t1;
+        c.t2 = t2;
+        return c;
+    },
+
+    boundingBox: function() {
+        var x1 = this.from.x,
+            x2 = this.to.x,
+            y1 = this.from.y,
+            y2 = this.to.y;
+        var lx = x1 < x2 ? x1 : x2,
+            gx = x1 < x2 ? x2 : x1,
+            ly = y1 < y2 ? y1 : y2,
+            gy = y1 < y2 ? y2 : y1;
+        return new Box2D(new Coords2D(lx, ly), new Coords2D(gx, gy));
+    }
+});
+
+
+
+function Box2D(topleft, bottomright) {
+    this.topleft = topleft;
+    this.bottomright = bottomright;
+    this.topright = new Coords2D(bottomright.x, topleft.y);
+    this.bottomleft = new Coords2D(topleft.x, bottomright.y);
+}
+r.extend(Box2D, {
+    draw: function(color, width) {
+        draw.box(this, color, width);
+    },
+
+    retard: function(qty = 35) {
+        this.topleft.x += Math.random() * 2*qty - qty;
+        this.topleft.y += Math.random() * 2*qty - qty;
+        this.bottomright.x += Math.random() * 2*qty - qty;
+        this.bottomright.y += Math.random() * 2*qty - qty;
+        this.topright.x += Math.random() * 2*qty - qty;
+        this.topright.y += Math.random() * 2*qty - qty;
+        this.bottomleft.x += Math.random() * 2*qty - qty;
+        this.bottomleft.y += Math.random() * 2*qty - qty;
+        return this;
+    },
+
+    overlaps: function(box2) {
+        var box1 = this;
+        var ox = this.overlapsV(box2, 'x'),
+            oy = this.overlapsV(box2, 'y');
+        if ( ox && oy ) {
+            return new Box2D(new Coords2D(ox[0], oy[0]), new Coords2D(ox[1], oy[1]));
+        }
+    },
+    overlapsV: function(box2, v) {
+        var box1 = this;
+        var a = box1.topleft[v],
+            b = box1.bottomright[v],
+            x = box2.topleft[v],
+            y = box2.bottomright[v];
+        if ( a < y && b > x ) {
+            return [Math.max(a, x), Math.min(b, y)];
+        }
+    }
+});
+
+
+
+function debug1() {
+    var line1 = new Line2D(new Coords2D(70, 40), new Coords2D(170, 175));
+    var line2 = new Line2D(new Coords2D(100, 0), new Coords2D(0, 100));
+    var line3 = new Line2D(new Coords2D(145, 185), new Coords2D(245, 50));
+    var line4 = new Line2D(new Coords2D(0, 0), new Coords2D(100, 100));
+    var line5 = new Line2D(new Coords2D(110, 110), new Coords2D(210, 210));
+
+    lineWidth = 2;
+    line1.draw('red');
+    line2.draw('green');
+    line3.draw('blue');
+    line4.draw('yellow');
+    line5.draw('black');
+    lineWidth = defaultLineWidth;
+
+    var c45 = line4.crosses(line5);
+    console.log('c45', c45);
+    var c14 = line1.crosses(line4);
+    console.log('c14', c14);
+    var c24 = line2.crosses(line4);
+    console.log('c24', c24);
+
+    return;
+
+    var b1 = line1.boundingBox();
+    var b2 = line2.boundingBox();
+    var b3 = line3.boundingBox();
+
+    b1.draw();
+    b2.draw();
+    b3.draw();
+
+    var overlap12 = b1.overlaps(b2);
+    var overlap13 = b1.overlaps(b3);
+    var overlap23 = b2.overlaps(b3);
+
+    lineWidth = 2;
+    overlap12 && overlap12.draw('red');
+    overlap13 && overlap13.draw('red');
+    overlap23 && overlap23.draw('red');
+    lineWidth = defaultLineWidth;
+}
+
+
+
+$(init);
+
+</script>

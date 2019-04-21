@@ -1,0 +1,62 @@
+<style>
+/* Most textareas */
+textarea {
+  padding: 10px;
+  width: 90%;
+  height: 400px;
+  line-height: 1.2em;
+  font-size: 18px;
+}
+
+/* Specific code textarea */
+textarea.code {
+  white-space: nowrap;
+  background: linear-gradient(
+    to bottom,
+    white calc(12 * 1.2em),
+    yellow calc(12 * 1.2em),
+    yellow calc((12 + 1) * 1.2em),
+    white calc((12 + 1) * 1.2em));
+  background-origin: content-box;
+  background-attachment: local;
+}
+</style>
+
+<p>This gradient shouldn't have to know the line-height is 1.2em to calculate the gradient position.</p>
+
+<textarea class="code">&lt;?php
+
+require PROJECT_LOGIC . '/inc.cls.mod_options.php';
+
+class Mod_MailingLists extends Mod_Options {
+
+	protected $m_arrHooks = array(
+		'/'				=&gt; 'start',
+		'/start/fetch'	=&gt; 'fetchUsers',
+		'/start/save'	=&gt; 'saveList',
+		'/opt-out'		=&gt; 'optOut',
+
+		'/#/hide'		=&gt; 'hideMailingList',
+		'/#/write'		=&gt; 'writeMessage',
+		'/#/write/send'	=&gt; 'sendMessage',
+
+		'/#/history'	=&gt; 'mailingHistory',
+		'/#/history/#'	=&gt; 'mailingMailing',
+	);
+
+
+	protected function __preload() {
+		parent::__preload();
+		$this-&gt;mf_CheckModule('mailinglists');
+	}
+
+
+
+	/**
+	 *
+	 */
+	function mailingMailing( AROMailingList $mlist, AROMailingListMailing $mailing ) {
+		$this-&gt;tpl-&gt;assign(get_defined_vars());
+		return $this-&gt;tpl-&gt;display('options/mailinglists_mailing');
+
+	} // END mailingMailing() */</textarea>

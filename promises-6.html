@@ -1,0 +1,39 @@
+<script>
+function test(name) {
+    var Y = Math.random() > 0.4;
+    console.log(name, Y);
+    return Y;
+}
+
+function clickSpeed() {
+    return new Promise(function(resolve, reject) {
+        if ( test('one') ) {
+            return setTimeout(function() {
+                if ( test('two') ) {
+                    return setTimeout(function() {
+                        if ( test('three') ) {
+                            return setTimeout(function() {
+                                console.log('resolving...');
+                                resolve();
+                            }, 500);
+                        }
+                        console.log('rejecting...');
+                        reject();
+                    }, 500);
+                }
+                console.log('rejecting...');
+                reject();
+            }, 500);
+        }
+        console.log('rejecting...');
+        reject();
+    });
+}
+
+var done = function(changed) {
+    console.log('END', changed);
+    console.log("\n\n\n");
+};
+clickSpeed().then(done.bind(this, true), done.bind(this, false));
+
+</script>

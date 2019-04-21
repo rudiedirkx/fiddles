@@ -1,0 +1,94 @@
+<style>
+canvas {
+    background: #eee;
+}
+</style>
+
+<p><span id=dur>0.0</span></p>
+<canvas id=c width=500 height=500></canvas>
+
+<script>
+// Constants
+var CIRCLE = 2 * Math.PI,
+    DEG_TO_RAD = CIRCLE / 360,
+    RAD_TO_DEG = 1 / DEG_TO_RAD;
+
+// Config
+var _r = 200,
+    _cr = 10,
+    _fill = true,
+    _speed = 45; // deg/sec
+
+// Context
+var _cvs = document.getElementById('c'),
+    ctx = _cvs.getContext('2d'),
+    _dur = document.getElementById('dur'),
+    _w = _cvs.width,
+    _h = _cvs.height;
+
+// State
+var animates = {a: CIRCLE/2, r: _r},
+    start = Date.now(),
+    whole = false,
+    pencilColor = '#000000',
+    paperColor = '#eeeeee';
+
+ctx.lineWidth = 2;
+
+_iterate();
+
+function _iterate() {
+    // Write time
+    var dur = (Date.now() - start) / 1000,
+        time = Math.round(dur * 10) / 10;
+    _dur.textContent = time;
+    whole = Math.floor(time) == Math.ceil(time);
+
+    // Change params
+    animates.a -= _speed / 60 * DEG_TO_RAD;
+
+    // Draw
+    _draw();
+
+    // Request next painting cycle
+    webkitRequestAnimationFrame(_iterate);
+}
+
+function _draw() {
+    _clear();
+    _setColors();
+
+    ctx.beginPath();
+    ctx.arc(_w/2, _h/2, _r, 0, CIRCLE);
+    ctx.stroke();
+
+    _circle(animates.a);
+}
+
+function _setColors() {
+    if (whole) {
+        ctx.strokeStyle = paperColor;
+        ctx.fillStyle = paperColor;
+    }
+    else {
+        ctx.strokeStyle = pencilColor;
+        ctx.fillStyle = pencilColor;
+    }
+}
+
+function _circle(a) {
+    var x = _w/2 + animates.r * Math.sin(a),
+        y = _h/2 + animates.r * Math.cos(a);
+
+    ctx.beginPath();
+    ctx.arc(x, y, _cr, 0, CIRCLE);
+    _fill ? ctx.fill() : ctx.stroke();
+}
+
+function _clear() {
+    // ctx.clearRect(0, 0, _w, _h);
+    ctx.fillStyle = whole ? pencilColor : paperColor;
+    ctx.fillRect(0, 0, _w, _h);
+}
+
+</script>

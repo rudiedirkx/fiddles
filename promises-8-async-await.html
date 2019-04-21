@@ -1,0 +1,19 @@
+<script>
+function timer(T) {
+  return new Promise(function(resolve) {
+    setTimeout(function() {
+      console.log(T);
+      resolve(T);
+    }, T);
+  });
+}
+
+(async function() {
+  const result = await Promise.all([timer(100), timer(200), timer(1000)]);
+  console.log('A', result);
+
+  Promise.all([timer(150), timer(250), timer(1050)]).then(result => {
+    console.log('B', result);
+  });
+})();
+</script>

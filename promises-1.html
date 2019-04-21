@@ -1,0 +1,48 @@
+<p>See the console too.</p>
+<p id="cool"></p>
+<p id="simple"></p>
+
+<script>
+function wait(ms) {
+    return new Promise(function(r) {
+        setTimeout(r, ms);
+    });
+}
+function randomWait(name) {
+    var ms = ~~(Math.random() * 5000);
+    console.log('"' + name + '" will have to wait ' + ms + ' ms');
+    return wait(ms);
+}
+function fetchHello() {
+    return randomWait('hello').then(function() {
+        return "Hello";
+    });
+}
+function fetchWorld() {
+    return randomWait('world').then(function() {
+        return "World";
+    });
+}
+function fetchFoobar() {
+    return randomWait('foobar').then(function() {
+        return "Foobar";
+    });
+}
+
+// Simple way: all at once when done
+Promise.all([fetchHello(), fetchWorld(), fetchFoobar()]).then(function(r) {
+    simple.textContent = r.join(' ');
+});
+
+// Cool way: as fast as possible, but in order
+[fetchHello(), fetchWorld(), fetchFoobar()].reduce(function(chain, promise) {
+    return chain.then(function() {
+        return promise;
+    }).then(function(value) {
+        cool.appendChild(
+            document.createTextNode(value + ' ')
+        );
+    });
+}, Promise.resolve());
+
+</script>

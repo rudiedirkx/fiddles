@@ -1,0 +1,84 @@
+<style>
+ul, li {
+    display: block;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+ul {
+    padding: 0 10px 10px 0;
+    background: #eee;
+    max-width: 360px;
+}
+li {
+    float: left;
+    margin: 10px 0 0 10px;
+    background: #ccc;
+    width: 30px;
+    height: 30px;
+    line-height: 30px;
+    text-align: center;
+}
+
+
+ul:after {
+    content: '';
+    display: block;
+    clear: both;
+}
+</style>
+
+<p>Click on the grey UL. Requires <code>MutationObserver</code> and <code>console.group</code>.</p>
+
+<ul><li></li></ul>
+
+<p><label><input type="checkbox" /> Toggle me?</label></p>
+
+<p><label><input type="checkbox" onclick="$cb.disabled=this.checked" /> ^ Toggle me to disable ^</label></p>
+
+
+<script>
+var $d = document,
+    $ul = $d.querySelector('ul'),
+    $cb = $d.querySelector('input[type=checkbox]');
+
+var observer = new MutationObserver(function(mutations) {
+    console.log('OBSERVED', mutations);
+
+});
+var config = {childList: true, attributes: true, characterData: true, subtree: true, attributeOldValue: true, characterDataOldValue: true};
+
+observer.observe($ul, config);
+observer.observe($cb, config);
+
+function cc($li, iter) {
+    var c = [color(), color(), color()];
+    $li.style.backgroundColor = 'rgb(' + c.join(',') + ')';
+    $li.innerText = parseInt(Math.random() * 10);
+    $li.firstChild.existable || ($li.firstChild.existable = 0);
+    $li.firstChild.existable++;
+    if ( iter < 2 ) {
+        setTimeout(cc, 500, $li, iter+1);
+    }
+    console.log('existable: %d', $li.firstChild.existable);
+}
+
+$ul.onclick = function(e, $li) {
+    $li = $d.createElement('li');
+    observer.observe($li, config);
+    this.appendChild($li);
+    $li.onclick = function(e) {
+        e.stopPropagation();
+        this.parentNode.removeChild(this);
+    };
+    setTimeout(cc, 500, $li, 0);
+};
+
+setTimeout(function() {
+    $ul.onclick();
+}, 500);
+
+function color() {
+    return parseInt(Math.random() * 255);
+}
+</script>

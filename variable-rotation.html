@@ -1,0 +1,144 @@
+<style>
+p > :nth-child(n+3) {
+    margin-left: 15px;
+}
+#dur {
+    display: inline-block;
+    min-width: 3em;
+}
+canvas {
+    background: #eee;
+}
+</style>
+
+<p>
+    <span id=dur>0.0</span>
+    <label><input id="outline" type=checkbox /> Outline?</label>
+</p>
+<canvas id=c width=500 height=500></canvas>
+
+<script src="bezier.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/rudiedirkx/rjs@master/rjs.js"></script>
+<script>
+// Constants
+var CIRCLE = 2 * Math.PI,
+    DEG_TO_RAD = CIRCLE / 360,
+    RAD_TO_DEG = 1 / DEG_TO_RAD;
+
+// Config
+var _r = 170,
+    _rd = 70,
+    _cr = 25,
+    _crd = 20,
+    _fill = true,
+    _outline = false,
+    _flash = true,
+    _speed = 120, // deg/sec
+    _speedd = 90,
+    _easing = Bezier(0.75, 0.25, 0.25, 0.75);
+
+// Context
+var elCanvas = $('#c'),
+    ctx = elCanvas.getContext('2d'),
+    _dur = $('#dur'),
+    elOutline = $('#outline'),
+    _w = elCanvas.width,
+    _h = elCanvas.height;
+
+// State
+var animates = {a: CIRCLE/2, r: _r, s: _speed, cr: _cr},
+    start = Date.now(),
+    whole = false,
+    pencilColor = '#000000',
+    paperColor = '#eeeeee';
+
+ctx.lineWidth = 1;
+
+// Interactivity
+elOutline.onclick = function(e) {
+    _outline = this.checked;
+};
+
+// Start processes
+_iterate();
+_animateR();
+_animateS();
+_animateCR();
+
+// Logic
+function _animateR() {
+    var target = _r - _rd + Math.random() * 2 * _rd,
+        duration = 1 + 0 * Math.random() * 3;
+    Animate(animates, 'r', target, duration, _animateR, _easing);
+}
+function _animateS() {
+    var target = _speed - _speedd + Math.random() * 2 * _speedd,
+        duration = 1 + 0 * Math.random() * 3;
+    Animate(animates, 's', target, duration, _animateS, _easing);
+}
+function _animateCR() {
+    var target = _cr - _crd + Math.random() * 2 * _crd,
+        duration = 1 + 0 * Math.random() * 3;
+    Animate(animates, 'cr', target, duration, _animateCR, _easing);
+}
+
+function _iterate() {
+    // Write time
+    var dur = (Date.now() - start) / 1000,
+        time = Math.round(dur * 10) / 10;
+    _dur.textContent = time;
+    whole = _flash && Math.floor(time) == Math.ceil(time);
+
+    // Change params
+    animates.a -= animates.s / 60 * DEG_TO_RAD;
+
+    // Draw
+    _draw();
+
+    // Request next painting cycle
+    requestAnimationFrame(_iterate);
+}
+
+function _draw() {
+    _clear();
+    _setColors();
+
+    if (_outline) {
+        ctx.beginPath();
+        ctx.arc(_w/2, _h/2, animates.r, 0, CIRCLE);
+        ctx.stroke();
+    }
+
+    _circle(animates.a);
+}
+
+function _setColors() {
+    if (whole) {
+        ctx.strokeStyle = paperColor;
+        ctx.fillStyle = paperColor;
+    }
+    else {
+        ctx.strokeStyle = pencilColor;
+        ctx.fillStyle = pencilColor;
+    }
+}
+
+function _circle(a) {
+    var x = _w/2 + animates.r * Math.sin(a),
+        y = _h/2 + animates.r * Math.cos(a);
+
+    ctx.beginPath();
+    ctx.arc(x, y, animates.cr, 0, CIRCLE);
+    _fill ? ctx.fill() : ctx.stroke();
+}
+
+function _clear() {
+    // ctx.clearRect(0, 0, _w, _h);
+    ctx.fillStyle = whole ? pencilColor : paperColor;
+    ctx.fillRect(0, 0, _w, _h);
+}
+
+function $(sel) {
+    return document.querySelector(sel);
+}
+</script>

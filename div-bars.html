@@ -1,0 +1,47 @@
+<style>
+#bars {
+    border: solid 1px black;
+    display: inline-block;
+    padding: 5px;
+    height: 100px;
+
+    display: -webkit-inline-flex;
+    display: -moz-inline-flex;
+    display: inline-flex;
+
+    -webkit-flex-flow: row nowrap;
+    -moz-flex-flow: row nowrap;
+    flex-flow: row nowrap;
+
+    -webkit-align-items: flex-end;
+    -moz-align-items: flex-end;
+    align-items: flex-end;
+}
+#bars > div {
+    width: 5px;
+    background-color: #999;
+}
+#bars > div + div {
+    margin-left: 2px;
+}
+</style>
+
+<div id="bars">1</div>
+<p><button onclick="repop()">Do that again</button></p>
+
+<script>
+var bars = document.getElementById('bars');
+
+function repop() {
+    var L = 10 + parseInt(Math.random() * 30);
+
+    bars.innerHTML = '';
+    for ( var b, h, i=0; i<L; i++ ) {
+        h = 20 + parseInt(Math.random() * 80);
+        b = document.createElement('div');
+        b.style.height = h + 'px';
+        bars.appendChild(b);
+    }
+}
+repop();
+</script>

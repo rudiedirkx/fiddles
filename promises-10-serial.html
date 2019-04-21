@@ -1,0 +1,16 @@
+<script>
+var numbers = [1,2,3,4,5,6];
+var callbacks = numbers.map(n => function(V) {
+  return new Promise(function(resolve) {
+    console.log('Starting ', n);
+    setTimeout(x => {
+      console.log('Finishing ', n);
+      resolve(n * V)
+    }, n * 100);
+  });
+});
+callbacks.reduce(
+  (P, next) => P.then(next),
+  Promise.resolve(1)
+).then(console.log);
+</script>

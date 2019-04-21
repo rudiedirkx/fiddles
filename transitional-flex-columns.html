@@ -1,0 +1,102 @@
+<style>
+ul, li {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    -webkit-transition: all 800ms ease-out;
+    x-webkit-transition: height 1000ms ease-out;
+}
+
+ul {
+    display: -webkit-flex;
+    width: 100%;
+    height: 300px;
+    background: #eee;
+    -webkit-align-items: flex-end;
+}
+li {
+    -webkit-flex: 1;
+    height: 1%;
+    background: #ccc;
+    margin-right: 10px;
+}
+li:first-child {
+    margin-left: 10px;
+}
+li:first-child:last-child {
+    margin: 0;
+}
+
+</style>
+
+<ul id="cont">
+    <li style="height: 80%"></li>
+</ul>
+
+<p>
+    <button id="add">Add column</button>
+    <button id="remove">Remove column</button>
+</p>
+
+
+<script>
+var $cont = document.getElementById('cont'),
+    $add = document.getElementById('add'),
+    $remove = document.getElementById('remove');
+
+$add.onclick = function(e) {
+    e.preventDefault();
+    addColumn();
+};
+
+$remove.onclick = function(e, lc) {
+    e.preventDefault();
+    if (lc = $cont.lastElementChild) {
+        $cont.removeChild(lc);
+    }
+};
+
+[].forEach.call($cont.children, function($col) {
+    $col.onclick = onColClick;
+});
+
+function onColClick(e) {
+    var cs = getComputedStyle(this),
+        css = cs.getPropertyCSSValue('-webkit-flex-grow'),
+        grow = parseFloat(css.cssText),
+        newGrow;
+
+    if (grow == 1) newGrow = 2;
+    else if (grow == 2) newGrow = 1;
+
+    if (newGrow) {
+        this.style.WebkitFlexGrow = newGrow;
+    }
+}
+
+function newColumn() {
+    var $col = document.createElement('li');
+    $col.style.WebkitFlexGrow = 0;
+    $col.style.backgroundColor = rc();
+    $col.onclick = onColClick;
+    return $col;
+}
+
+function addColumn($col) {
+    $cont.appendChild($col = newColumn());
+    setTimeout(function($col) {
+        $col.style.height = ~~(1 + Math.random() * 99) + '%';
+        $col.style.WebkitFlexGrow = '';
+    }, 10, $col);
+}
+
+function rc() {
+    var r = rcc(), g = rcc(), b = rcc()
+    return 'rgba(' + r + ', ' + g + ', ' + b + ', 0.75)';
+}
+
+function rcc() {
+    return ~~(1 + Math.random() * 254);
+}
+
+</script>

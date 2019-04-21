@@ -1,0 +1,74 @@
+<script>
+class LocalCacheStorage {
+  constructor() {
+    this.data = {};
+  }
+  get(name) {
+    return Promise.resolve(this.data[name]);
+  }
+  set(name, value) {
+    this.data[name] = value;
+    return Promise.resolve();
+  }
+}
+
+class WebstoreCacheStorage {
+  constructor(store) {
+    this.url = `https://store.webblocks.nl/?store=${encodeURIComponent(store)}&`;
+  }
+  get(name) {
+    return fetch(`${this.url}get=${encodeURIComponent(name)}`).then(rsp => {
+      var trim = rsp.headers.get('x-anti-hijack');
+      return rsp.text().then(txt => {
+        var data = JSON.parse(txt.substr(trim));
+        return data.exists ? data.value : undefined;
+      });
+    });
+  }
+  set(name, value) {
+    return fetch(`${this.url}put=${encodeURIComponent(name)}&value=${encodeURIComponent(JSON.stringify(value))}`);
+  }
+}
+
+class Cache {
+  constructor(storage) {
+    this.storage = storage;
+  }
+  fetch(name) {
+    return this.storage.get(name);
+  }
+  get(name, fetch) {
+    return this.fetch(name).then(value => {
+      if (value !== undefined) {
+        return value;
+      }
+      return fetch().then(value => {
+        console.log('fetched', name, value);
+        this.set(name, value); // async
+        return value;
+      });
+    });
+  }
+  set(name, value) {
+    return this.storage.set(name, value).then(() => name);
+  }
+}
+
+//var cache = new Cache(new LocalCacheStorage());
+var cache = new Cache(new WebstoreCacheStorage('jsfiddle'));
+
+var unique = parseInt(Math.random() * 10);
+console.log('unique', unique);
+cache.set('oele', 'OELE' + unique).then(name => console.log('cache set oele', name));
+
+setTimeout(function() {
+  cache.get('oele', function() {
+    console.warn('wut!? Should not be here...');
+    return Promise.resolve(null);
+  }).then(value => console.log('cache get oele', value));
+
+  cache.get('boele', function() {
+    return Promise.resolve('BOELE');
+  }).then(value => console.log('cache get & set boele', value));
+}, 500);
+</script>

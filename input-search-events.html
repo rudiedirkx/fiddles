@@ -1,0 +1,29 @@
+<p id=support></p>
+
+<p><input type=search id=search autocomplete=off autosave=jsfiddle value=oele incremental></p>
+
+<p id=events></p>
+
+<script>
+var i = document.querySelector('#search'),
+    e = document.querySelector('#events'),
+    s = document.querySelector('#support'),
+    //  t = ['click', 'keydown', 'keyup', 'change', 'reset', 'search'],
+    t = ['search'];
+
+if (i.addEventListener) {
+    t.forEach(function(t) {
+        i.addEventListener(t, function() {
+            e.innerHTML += t + '<br>';
+        }, false);
+    });
+}
+
+var support1 = 'search' == i.type,
+    support2 = 'incremental' in i;
+
+s.innerHTML = 'This browser ' + (support1 ? 'supports' : 'does not support') + ' the <code>input:search</code> field';
+if (support1) {
+    s.innerHTML += ' ' + (support2 ? 'and' : 'but not') + ' its <code>INCREMENTAL</code> property';
+}
+</script>
