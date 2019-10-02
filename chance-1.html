@@ -1,0 +1,45 @@
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+<ul>
+	<li>4 blue + 0 white: <span id="b4">0</span></li>
+	<li>3 blue + 1 white: <span id="b3">0</span></li>
+	<li>2 blue + 2 white: <span id="b2">0</span></li>
+	<li>1 blue + 3 white: <span id="b1">0</span></li>
+	<li>0 blue + 4 white: <span id="b0">0</span></li>
+</ul>
+
+<p><button>Try 1000 times</button></p>
+
+<script>
+const totals = [0, 0, 0, 0, 0];
+
+function rand() {
+	return Math.random() > 0.5;
+}
+
+function tryOne() {
+	let blues = 0;
+	for ( let i = 0; i < 4; i++ ) {
+		if (rand()) {
+			blues++;
+		}
+	}
+	return blues;
+}
+
+function showTotals() {
+	const total = totals.reduce((total, num) => total + num, 0);
+	totals.forEach((num, blues) => {
+		document.querySelector(`#b${blues}`).textContent = `${num} (${Math.round(num / total * 100)}%)`;
+	});
+}
+
+document.querySelector('button').addEventListener('click', e => {
+	for ( let i = 0; i < 1000; i++ ) {
+		const blues = tryOne();
+		totals[blues]++;
+	}
+
+	showTotals();
+});
+</script>
