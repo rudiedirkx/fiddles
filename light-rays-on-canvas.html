@@ -12,134 +12,140 @@ canvas {
 
 <canvas width="500" height="500"></canvas>
 
-<script src="https://cdn.jsdelivr.net/gh/rudiedirkx/rjs@master/rjs.js"></script>
+<script src="https://rudiedirkx.github.io/rjs/rjs.js"></script>
 <script>
-var $canvas = $('canvas', 1),
-	ctx = $canvas.getContext('2d'),
-	_w = $canvas.width,
-	_h = $canvas.height,
-	listener = 'mousemove';
+const $canvas = $('canvas', 1);
+const ctx = $canvas.getContext('2d');
+const _w = $canvas.width;
+const _h = $canvas.height;
 
-var defaultLineWidth = 2,
-	lineWidth = defaultLineWidth,
-	defaultStrokeColor = '#cccccc',
-	inited = false,
-	saveStructure = false,
-	boxes = [],
-	corners = {},
-	lines = [];
+const defaultLineWidth = 2;
+const defaultStrokeColor = '#cccccc';
 
-var draw = {
-	line(from, to, color, width) {
-		//console.log('drawing line from:', from, ' to:', to);
-		ctx.lineWidth = width || lineWidth;
+var world;
+
+class World {
+	constructor() {
+		this.box = new Box2D(new Coords2D(0, 0), new Coords2D(_w, _h));
+		this.boxes = [];
+	}
+
+	addBox(box) {
+		this.boxes.push(box);
+	}
+
+	getWorldCorners() {
+		return this.box.getCorners();
+	}
+
+	getBoxCorners() {
+		const corners = [];
+		this.boxes.forEach(box => {
+			corners.push(...box.getCorners());
+		});
+		return corners;
+	}
+
+	getAllCorners() {
+		return [...this.getWorldCorners(), ...this.getBoxCorners()];
+	}
+
+	getWorldEdges() {
+		return this.box.getEdges();
+	}
+
+	getBoxEdges() {
+		const edges = [];
+		this.boxes.forEach(box => {
+			edges.push(...box.getEdges());
+		});
+		return edges;
+	}
+
+	getAllEdges() {
+		return [...this.getWorldEdges(), ...this.getBoxEdges()];
+	}
+
+	getUntouchingBoxEdges(corner) {
+		return this.getBoxEdges().filter(edge => {
+			const touches = edge.touchesCorner(corner);
+			return !touches;
+		});
+	}
+
+	getAllRays(from) {
+		return this.getBoxCorners().map(C => new Line2D(from, C));
+		// return this.getAllCorners().map(C => new Line2D(from, C));
+	}
+
+	getAllUndisturbedRays(from) {
+		var rays = this.getAllRays(from);
+		return rays.filter(ray => {
+			var edges = this.getBoxEdges();
+			return !edges.some(edge => {
+
+				// @todo Fix Line2D.crosses()
+
+				var crosses = ray.crosses(edge);
+				return crosses;
+			});
+		});
+	}
+}
+
+class Draw {
+	static line(from, to, {color, width} = {}) {
+		ctx.lineWidth = width || defaultLineWidth;
 		ctx.strokeStyle = color || defaultStrokeColor;
 		ctx.beginPath();
 		ctx.moveTo(from.x, from.y);
 		ctx.lineTo(to.x, to.y);
 		ctx.stroke();
+	}
 
-		if ( saveStructure ) {
-			var f = from.round().join('_'),
-				t = to.round().join('_');
-			corners[f] || (corners[f] = from);
-			corners[t] || (corners[t] = to);
+	static lines(lines, {color = 'orange', width = 1} = {}) {
+		lines.forEach(line => this.line(line.from, line.to, {color, width}));
+	}
 
-			lines.push(new Line2D(from, to));
-		}
-	},
-	box(box, color, width) {
+	static dot(coord, {color = 'black', radius = 3} = {}) {
+		ctx.fillStyle = color;
+		ctx.beginPath();
+		ctx.arc(coord.x, coord.y, radius, 0, Math.PI * 2);
+		ctx.fill();
+	}
+
+	static box(box, {color, width} = {}) {
 		//console.log('drawing box:', box);
-		draw.line(box.topleft, box.topright, color, width);
-		draw.line(box.topright, box.bottomright, color, width);
-		draw.line(box.bottomright, box.bottomleft, color, width);
-		draw.line(box.bottomleft, box.topleft, color, width);
-	},
-	clear() {
+		Draw.line(box.topleft, box.topright, {color, width});
+		Draw.line(box.topright, box.bottomright, {color, width});
+		Draw.line(box.bottomright, box.bottomleft, {color, width});
+		Draw.line(box.bottomleft, box.topleft, {color, width});
+	}
+
+	static clear() {
 		$canvas.width = _w;
-	},
+	}
 
-	reset() {
-		draw.clear();
-		draw.structure();
-	},
-	structure() {
-		var initial = !inited;
-		inited = true;
+	static reset() {
+		Draw.clear();
+		Draw.structure();
+		Draw.world();
+	}
 
-		if ( initial ) {
-			corners['0_0'] = new Coords2D(0, 0);
-			corners[(_w-1)+'_0'] = new Coords2D(_w-1, 0);
-			corners[(_w-1)+'_'+(_h-1)] = new Coords2D(_w-1, _h-1);
-			corners['0_'+(_h-1)] = new Coords2D(0, _h-1);
-
-			boxes.push(new Box2D(new Coords2D(100, 100), new Coords2D(200, 200)).retard());
-			boxes.push(new Box2D(new Coords2D(150, 250), new Coords2D(250, 350)).retard());
-			boxes.push(new Box2D(new Coords2D(350, 200), new Coords2D(450, 300)).retard());
-		}
-
+	static structure() {
 		for (var y=50; y<_h; y+=50) {
-			draw.line({x: 0, y:y}, {x: _w, y:y}, 'white');
+			Draw.line({x: 0, y:y}, {x: _w, y:y}, {color: 'white'});
 		}
 		for (var x=50; x<_w; x+=50) {
-			draw.line({x: x, y:0}, {x: x, y:_h}, 'white');
+			Draw.line({x: x, y:0}, {x: x, y:_h}, {color: 'white'});
 		}
+	}
 
-		saveStructure = initial;
-		r.each(boxes, function(box) {
+	static world() {
+		r.each(world.boxes, function(box) {
 			box.draw();
 		});
-		saveStructure = false;
 	}
-};
-
-function init() {
-	draw.reset();
-	attachListeners();
-
-	// debug();
-}
-
-function attachListeners() {
-	$canvas.on(listener, function(e) {
-		var _time = Date.now();
-
-		var mouse = e.subjectXY.multiply(this.width / this.offsetWidth);
-
-		draw.reset();
-
-		var done = 0;
-		r.each(corners, function(corner, key) {
-			//if ( ++done != 2 ) return;
-
-			var ray = new Line2D(mouse, corner);
-			// var rayBox = ray.boundingBox();
-			// rayBox.draw('blue', 1);
-
-			var closest = null;
-			r.each(lines, function(line) {
-			    var c = ray.crosses(line, true);
-			    if ( c ) {
-			        //console.log(c);
-			        if ( !closest || closest.t1 > c.t1 ) {
-			            closest = c;
-			            closest.line = line;
-			        }
-			    }
-			});
-
-			var visibleRay = ray;
-			if ( closest ) {
-			    // closest.line.draw('green');
-			    visibleRay = new Line2D(mouse, closest);
-			}
-			if ( visibleRay.touchesCorner() ) {
-				visibleRay.extendToEdge().draw('red');
-			}
-		});
-
-		console.log('  -- That took ' + (Date.now()-_time) +  'ms');
-	});
 }
 
 
@@ -158,20 +164,19 @@ r.extend(Coords2D, {
 
 
 
-function Line2D(from, to) {
-	this.from = from;
-	this.to = to;
-}
-r.extend(Line2D, {
-	draw(color, width) {
-		draw.line(this.from, this.to, color || 'green', width);
-	},
+class Line2D {
+	constructor(from, to) {
+		this.from = from;
+		this.to = to;
+	}
 
-	touchesCorner() {
-		var from = this.from.round().join('_');
-		var to = this.to.round().join('_');
-		return corners[from] || corners[to];
-	},
+	draw(color, width) {
+		Draw.line(this.from, this.to, {color, width});
+	}
+
+	touchesCorner(corner) {
+		return this.from.equal(corner) || this.to.equal(corner);
+	}
 
 	shorten() {
 		var dy = this.to.y - this.from.y,
@@ -185,7 +190,7 @@ r.extend(Line2D, {
 		this.from.x += this.from.x > this.to.x ? -ddx : ddx;
 		this.from.y += this.from.y > this.to.y ? -ddy : ddy;
 		return this;
-	},
+	}
 
 	extendToEdge() {
 		if (this.to.onEdge()) {
@@ -197,9 +202,11 @@ r.extend(Line2D, {
 		// Some should extend to a side, but which?
 
 		return this;
-	},
+	}
 
-	crosses(line2, checkBounds) {
+	// @todo Fix Line2D.crosses()
+
+	crosses(line2, checkBounds = true) {
 		var line1 = this;
 		var x1 = line1.from.x,
 			y1 = line1.from.y,
@@ -235,7 +242,7 @@ r.extend(Line2D, {
 		c.t1 = t1;
 		c.t2 = t2;
 		return c;
-	},
+	}
 
 	boundingBox() {
 		var x1 = this.from.x,
@@ -248,32 +255,55 @@ r.extend(Line2D, {
 			gy = y1 < y2 ? y2 : y1;
 		return new Box2D(new Coords2D(lx, ly), new Coords2D(gx, gy));
 	}
-});
-
-
-
-function Box2D(topleft, bottomright) {
-	this.topleft = topleft;
-	this.bottomright = bottomright;
-	this.topright = new Coords2D(bottomright.x, topleft.y);
-	this.bottomleft = new Coords2D(topleft.x, bottomright.y);
 }
-r.extend(Box2D, {
+
+
+
+class Box2D {
+	constructor(topleft, bottomright) {
+		this.topleft = topleft;
+		this.bottomright = bottomright;
+		this.topright = new Coords2D(bottomright.x, topleft.y);
+		this.bottomleft = new Coords2D(topleft.x, bottomright.y);
+	}
+
+	getEdges() {
+		return [
+			new Line2D(this.topleft, this.topright),
+			new Line2D(this.topright, this.bottomright),
+			new Line2D(this.bottomright, this.bottomleft),
+			new Line2D(this.bottomleft, this.topleft),
+		];
+	}
+
+	getCorners() {
+		return [
+			this.topleft,
+			this.bottomright,
+			this.topright,
+			this.bottomleft,
+		];
+	}
+
 	draw(color, width) {
-		draw.box(this, color, width);
-	},
+		Draw.box(this, {color, width});
+	}
 
 	retard(qty = 35) {
 		this.topleft.x += Math.random() * 2*qty - qty;
 		this.topleft.y += Math.random() * 2*qty - qty;
+		this.topleft = this.topleft.round();
 		this.bottomright.x += Math.random() * 2*qty - qty;
 		this.bottomright.y += Math.random() * 2*qty - qty;
+		this.bottomright = this.bottomright.round();
 		this.topright.x += Math.random() * 2*qty - qty;
 		this.topright.y += Math.random() * 2*qty - qty;
+		this.topright = this.topright.round();
 		this.bottomleft.x += Math.random() * 2*qty - qty;
 		this.bottomleft.y += Math.random() * 2*qty - qty;
+		this.bottomleft = this.bottomleft.round();
 		return this;
-	},
+	}
 
 	overlaps(box2) {
 		var box1 = this;
@@ -282,7 +312,8 @@ r.extend(Box2D, {
 		if ( ox && oy ) {
 			return new Box2D(new Coords2D(ox[0], oy[0]), new Coords2D(ox[1], oy[1]));
 		}
-	},
+	}
+
 	overlapsV(box2, v) {
 		var box1 = this;
 		var a = box1.topleft[v],
@@ -293,55 +324,78 @@ r.extend(Box2D, {
 			return [Math.max(a, x), Math.min(b, y)];
 		}
 	}
-});
-
-
-
-function debug1() {
-	var line1 = new Line2D(new Coords2D(70, 40), new Coords2D(170, 175));
-	var line2 = new Line2D(new Coords2D(100, 0), new Coords2D(0, 100));
-	var line3 = new Line2D(new Coords2D(145, 185), new Coords2D(245, 50));
-	var line4 = new Line2D(new Coords2D(0, 0), new Coords2D(100, 100));
-	var line5 = new Line2D(new Coords2D(110, 110), new Coords2D(210, 210));
-
-	lineWidth = 2;
-	line1.draw('red');
-	line2.draw('green');
-	line3.draw('blue');
-	line4.draw('yellow');
-	line5.draw('black');
-	lineWidth = defaultLineWidth;
-
-	var c45 = line4.crosses(line5);
-	console.log('c45', c45);
-	var c14 = line1.crosses(line4);
-	console.log('c14', c14);
-	var c24 = line2.crosses(line4);
-	console.log('c24', c24);
-
-	return;
-
-	var b1 = line1.boundingBox();
-	var b2 = line2.boundingBox();
-	var b3 = line3.boundingBox();
-
-	b1.draw();
-	b2.draw();
-	b3.draw();
-
-	var overlap12 = b1.overlaps(b2);
-	var overlap13 = b1.overlaps(b3);
-	var overlap23 = b2.overlaps(b3);
-
-	lineWidth = 2;
-	overlap12 && overlap12.draw('red');
-	overlap13 && overlap13.draw('red');
-	overlap23 && overlap23.draw('red');
-	lineWidth = defaultLineWidth;
 }
 
 
 
-$(init);
+$(function() {
+	world = new World();
+	// world.addBox(new Box2D(new Coords2D(100, 100), new Coords2D(200, 200)).retard(10));
+	world.addBox(new Box2D(new Coords2D(150, 250), new Coords2D(250, 350)).retard(0));
+	// world.addBox(new Box2D(new Coords2D(350, 200), new Coords2D(450, 300)).retard(40));
+
+	Draw.reset();
+
+	function analyzeRays(source) {
+		var rays = world.getAllUndisturbedRays(source);
+		Draw.lines(rays);
+	}
+
+	if (sessionStorage.lastRaySouce) {
+		var source = Coords2D.fromArray(sessionStorage.lastRaySouce.split('_'));
+		analyzeRays(source);
+	}
+	else {
+		var source = new Coords2D(225, 190);
+		analyzeRays(source);
+	}
+
+	$canvas.on('click', function(e) {
+		var _time = Date.now();
+
+		const source = e.subjectXY.multiply(this.width / this.offsetWidth);
+		sessionStorage.lastRaySouce = source.join('_');
+
+		Draw.reset();
+
+		analyzeRays(source);
+
+		return;
+
+
+
+		var done = 0;
+		r.each(corners, function(corner, key) {
+			//if ( ++done != 2 ) return;
+
+			var ray = new Line2D(mouse, corner);
+			// var rayBox = ray.boundingBox();
+			// rayBox.draw('blue', 1);
+
+			var closest = null;
+			r.each(lines, function(line) {
+				var c = ray.crosses(line);
+				if ( c ) {
+					//console.log(c);
+					if ( !closest || closest.t1 > c.t1 ) {
+						closest = c;
+						closest.line = line;
+					}
+				}
+			});
+
+			var visibleRay = ray;
+			if ( closest ) {
+				// closest.line.draw('green');
+				visibleRay = new Line2D(mouse, closest);
+			}
+			if ( visibleRay.touchesCorner() ) {
+				visibleRay.extendToEdge().draw('red');
+			}
+		});
+
+		console.log('  -- That took ' + (Date.now()-_time) +  'ms');
+	});
+});
 
 </script>
