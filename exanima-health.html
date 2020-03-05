@@ -1,0 +1,94 @@
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+<style>
+#health-ui {
+	display: flex;
+	width: 300px;
+	outline: solid 1px #999;
+	background-color: gold;
+}
+#health-ui > * {
+	width: 0;
+	height: 30px;
+}
+#health-ui .stamina {
+	background-color: green;
+}
+#health-ui .unhealth {
+	background-color: darkred;
+	margin-left: auto;
+}
+</style>
+
+<p>
+	Stamina: <span id="stamina">?</span><br>
+	Health: <span id="health">?</span><br>
+	Health potion: <span id="health-potion">?</span><br>
+</p>
+
+<div id="health-ui">
+	<div class="stamina" style="width: 100%"></div>
+	<div class="unhealth" style="width: 0%"></div>
+</div>
+
+<p>
+	<button id="hurt-stamina">Hurt stamina</button>
+	<button id="hurt-health">Hurt health</button>
+	<button id="take-health-potion">Take health potion</button>
+</p>
+
+<script>
+const FIX_STAMINA_PER = 0.1;
+const FIX_HEALTH_PER = 0.03;
+
+var stamina = 100;
+var health = 100;
+
+var healthPotion = 0;
+
+const $stamina = document.querySelector('#stamina');
+const $health = document.querySelector('#health');
+const $healthPotion = document.querySelector('#health-potion');
+
+const $uiStamina = document.querySelector('#health-ui .stamina');
+const $uiUnhealth = document.querySelector('#health-ui .unhealth');
+
+const round = function(num) {
+	return Math.round(num * 10) / 10;
+}
+
+const tick = function() {
+	if (healthPotion > 0) {
+		healthPotion -= FIX_HEALTH_PER;
+		health = Math.min(100, health + FIX_HEALTH_PER);
+	}
+
+	if (stamina < health) {
+		stamina = Math.min(health, stamina + FIX_STAMINA_PER);
+	}
+
+	$stamina.textContent = round(stamina);
+	$health.textContent = round(health);
+	$healthPotion.textContent = round(healthPotion);
+
+	$uiStamina.style.width = round(stamina) + '%';
+	$uiUnhealth.style.width = round(100 - health) + '%';
+};
+
+document.querySelector('#hurt-stamina').addEventListener('click', e => {
+	stamina = Math.max(0, stamina - 30);
+});
+document.querySelector('#hurt-health').addEventListener('click', e => {
+	health = Math.max(0, health - 10);
+	stamina = Math.min(stamina - 10, health);
+});
+document.querySelector('#take-health-potion').addEventListener('click', e => {
+	healthPotion = Math.min(50, 100 - health);
+});
+
+const ticker = function() {
+	requestAnimationFrame(ticker);
+	tick();
+};
+ticker();
+</script>
