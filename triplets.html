@@ -1,0 +1,55 @@
+<script>
+const secret1 = "whatisup"
+const triplets1 = [
+	['t','u','p'],
+	['w','h','i'],
+	['t','s','u'],
+	['a','t','s'],
+	['h','a','p'],
+	['t','i','s'],
+	['w','h','s'],
+];
+
+// t u p w h i s a
+// 	t <s> u
+// t s u p w h i a
+// 	<a> t
+// a t s u p w h i
+// 	<h> a
+// h a t s u p w i
+// 	t <i> s
+// h a t i s u p w
+// 	<w> h
+// w h a t i s u p
+
+function recoverSecret(triplets) {
+	const letters = [].concat(...triplets).reduce((list, l) => {
+		list.includes(l) || list.push(l);
+		return list;
+	}, []);
+
+	console.log(letters.join(''));
+	triplets.slice(1).forEach(([a, b, c]) => {
+		let ai = letters.indexOf(a);
+		let bi = letters.indexOf(b);
+		let ci = letters.indexOf(c);
+		console.log(a+b+c, ai, bi, ci);
+
+		if (ai < bi && bi < ci) {
+			console.log('- ignore');
+			return;
+		}
+
+		if (bi > ci) {
+			// move b after a
+			letters.splice(bi, 1);
+			letters.splice(ai+1, 0, b);
+			console.log('- ' + letters.join(''));
+		}
+	});
+
+	return letters.join('');
+}
+
+console.log(recoverSecret(triplets1));
+</script>
