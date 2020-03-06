@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<meta charset="utf-8" />
+	<title>Fiddles</title>
+</head>
+
+<body>
+
+<h1>Fiddles:</h1>
+
+<ul></ul>
+
+<script>
+(function() {
+	const ul = document.querySelector('ul');
+	fetch('https://api.github.com/repos/rudiedirkx/fiddles/git/trees/master').then(x => x.json()).then(rsp => {
+		const html = rsp.tree.filter(item => item.path.match(/\.html$/)).map(item => {
+			return `<li><a href="${item.path}">${item.path}</a></li>`;
+		});
+		ul.innerHTML = html.join('');
+	});
+})();
+</script>
+
+</body>
+</html>
