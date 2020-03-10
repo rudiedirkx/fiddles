@@ -20,12 +20,6 @@
 }
 </style>
 
-<p hidden>
-	Stamina: <span id="stamina">?</span><br>
-	Health: <span id="health">?</span><br>
-	Health potion: <span id="health-potion">?</span><br>
-</p>
-
 <div id="health-ui">
 	<div class="stamina" style="width: 100%"></div>
 	<div class="unhealth" style="width: 0%"></div>
@@ -35,6 +29,12 @@
 	<button id="hurt-stamina">Hurt stamina</button>
 	<button id="hurt-health">Hurt health</button>
 	<button id="take-health-potion">Take health potion</button>
+</p>
+
+<p>
+	Stamina: <span id="stamina">?</span><br>
+	Health: <span id="health">?</span><br>
+	Health potion: <span id="health-potion">?</span><br>
 </p>
 
 <script>
@@ -83,7 +83,7 @@ document.querySelector('#hurt-health').addEventListener('click', e => {
 	stamina = Math.min(stamina - 10, health);
 });
 document.querySelector('#take-health-potion').addEventListener('click', e => {
-	healthPotion = Math.min(50, 100 - health);
+	healthPotion = 75;
 });
 
 const ticker = function() {
