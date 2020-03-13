@@ -1,0 +1,30 @@
+<script>
+function bin2buffer(str) {
+	return Uint8Array.from(str, c => c.charCodeAt(0));
+}
+
+(async function() {
+	const pem = await fetch('./crypto.pem').then(rsp => rsp.text());
+	console.log(pem);
+
+	const pem2 = pem.replace(/\-\-\-\-\-(BEGIN|END) (PUBLIC|PRIVATE) KEY\-\-\-\-\-/g, '').replace(/\s+/g, '');
+	// console.log(pem2);
+
+	const privKeyBuffer = bin2buffer(atob(pem2));
+	// console.log(privKeyBuffer);
+	const importParams = {name:'RSA-OAEP', hash:'SHA-256'};
+	const extractable = true;
+	const privKey = await crypto.subtle.importKey('pkcs8', privKeyBuffer, importParams, extractable, ['decrypt']);
+	console.log(privKey);
+
+	const pubKeyBuffer = bin2buffer(atob('MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAkAPTA5RH6R3RLVsVgOUccWm5jebLwQBGRQFyD++9I8oZQOie/WKvQNIZuXKrm+4gtU9to1Yw/xoh/3jIh6vF2BZ31/l4+O1O2+urkruom9/FQGsYgulz1P+SNcq+iyLfPsRyfywZJWUBUQRXA1i7n2UTFOpZj69V/mQILmwpI3x/HK7WCA0pPDwMtJMfDWgYRVcQgVxJC2BwQKOha2Ks+H0lO60Hbtn7ZLg5JuYZyozykUMr5SYwkZFtPrqMaHIAlv8OCnO173Not7zkwAcDXUhXJyBnCIeQLkg9ytFTOsKs6Wu+ulp9PYin3cUm8B4R4+jAyww3E3zxlvhPFfEWIwIDAQAB'))
+	const pubKey = await crypto.subtle.importKey('spki', pubKeyBuffer, importParams, extractable, ['encrypt']);
+	console.log(pubKey);
+
+	const encryptParams = {name: 'RSA-OAEP'}
+	const encryptedBuffer = await crypto.subtle.encrypt(encryptParams, pubKey, bin2buffer('Oele boele\nbla bla!'));
+	console.log(encryptedBuffer);
+	const encryptedBase64 = btoa(String.fromCharCode(...new Uint8Array(encryptedBuffer)));
+	console.log(encryptedBase64);
+})();
+</script>
