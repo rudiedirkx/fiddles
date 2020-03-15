@@ -5,7 +5,7 @@ function bin2buffer(str) {
 
 (async function() {
 	const pem = await fetch('./crypto.pem').then(rsp => rsp.text());
-	console.log(pem);
+	// console.log(pem);
 
 	const pem2 = pem.replace(/\-\-\-\-\-(BEGIN|END) (PUBLIC|PRIVATE) KEY\-\-\-\-\-/g, '').replace(/\s+/g, '');
 	// console.log(pem2);
@@ -15,16 +15,34 @@ function bin2buffer(str) {
 	const importParams = {name:'RSA-OAEP', hash:'SHA-256'};
 	const extractable = true;
 	const privKey = await crypto.subtle.importKey('pkcs8', privKeyBuffer, importParams, extractable, ['decrypt']);
-	console.log(privKey);
+	console.log('privKey:', privKey);
 
-	const pubKeyBuffer = bin2buffer(atob('MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAkAPTA5RH6R3RLVsVgOUccWm5jebLwQBGRQFyD++9I8oZQOie/WKvQNIZuXKrm+4gtU9to1Yw/xoh/3jIh6vF2BZ31/l4+O1O2+urkruom9/FQGsYgulz1P+SNcq+iyLfPsRyfywZJWUBUQRXA1i7n2UTFOpZj69V/mQILmwpI3x/HK7WCA0pPDwMtJMfDWgYRVcQgVxJC2BwQKOha2Ks+H0lO60Hbtn7ZLg5JuYZyozykUMr5SYwkZFtPrqMaHIAlv8OCnO173Not7zkwAcDXUhXJyBnCIeQLkg9ytFTOsKs6Wu+ulp9PYin3cUm8B4R4+jAyww3E3zxlvhPFfEWIwIDAQAB'))
-	const pubKey = await crypto.subtle.importKey('spki', pubKeyBuffer, importParams, extractable, ['encrypt']);
-	console.log(pubKey);
+	const privExport = await crypto.subtle.exportKey('jwk', privKey);
+	console.log(privExport);
+	delete privExport.d;
+	delete privExport.dp;
+	delete privExport.dq;
+	delete privExport.q;
+	delete privExport.qi;
+	privExport.key_ops = ['encrypt'];
+	const pubKey = await crypto.subtle.importKey('jwk', privExport, importParams, extractable, privExport.key_ops);
+	console.log('pubKey:', pubKey);
 
 	const encryptParams = {name: 'RSA-OAEP'}
 	const encryptedBuffer = await crypto.subtle.encrypt(encryptParams, pubKey, bin2buffer('Oele boele\nbla bla!'));
-	console.log(encryptedBuffer);
-	const encryptedBase64 = btoa(String.fromCharCode(...new Uint8Array(encryptedBuffer)));
-	console.log(encryptedBase64);
+	// console.log(encryptedBuffer);
+	const encrypted = btoa(String.fromCharCode(...new Uint8Array(encryptedBuffer)));
+	console.log('encrypted:', encrypted);
+
+	const encrypted2 = `
+2DHktyxJmtZ4dx7mqHnyJxaz8bZp1tvxFuz1GeY5OKPzZK169B2zQ4lMKnutC4IaArtLaU/5JRe6PZHeG4b/bbKpgKw9irb8Pdxsw/pP5G/72MkK0DtiPz0DXNyZb7ACMJlU3/kT1sTX2bUd5dwVWjuNjFbk8pxNQuTkZewxiP+QcIc/1DIJzYdXZNqoRMMK5CnCk5mz2pK91NUV6ebxd0RQE0PZvSvuOR+fI89vbJgzKAWZ3ZN0qzkicdooFLqHDBn+zHWGNW6i7ILbYpeEgYQNFY9wdZOoJeawwqOymYEaL5GnVX9Vz1J7xqOvJ1P68nuHF/jbJ8ZOgEGqCwJXzQ==
+`.trim();
+	const encryptedBuffer2 = bin2buffer(atob(encrypted2));
+	// console.log(encryptedBuffer2);
+	const decryptParams = encryptParams;
+	const decryptedBuffer2 = await crypto.subtle.decrypt(decryptParams, privKey, encryptedBuffer2);
+	console.log(decryptedBuffer2);
+	const decrypted2 = (new TextDecoder()).decode(decryptedBuffer2);
+	console.log(decrypted2);
 })();
 </script>
