@@ -1,0 +1,76 @@
+<title>Hex jiggle</title>
+<!-- <meta name="viewport" content="width=device-width, initial-scale=1" /> -->
+
+<style>
+html, body {
+	margin: 0;
+	padding: 0;
+	width: 100vw;
+	height: 100vh;
+}
+html, body, canvas {
+	background: #eee;
+}
+</style>
+
+<canvas id="c" width="500" height="500"></canvas>
+
+<script>
+// Config
+const _hexScale = 10;
+const _margin = -20;
+const _xRepeat = 40;
+const _yRepeat = 40;
+
+// Context
+const _cvs = document.getElementById('c');
+const _ctx = _cvs.getContext('2d');
+const _dur = document.getElementById('dur');
+
+// State
+const hexes = [];
+for ( let y = 0; y < _yRepeat; y++ ) {
+	for ( let x = 0; x < _xRepeat; x++ ) {
+		hexes.push([_margin + x * 6 * _hexScale + x * 10, _margin + y * ((_hexScale * 4) + 5)]);
+	}
+	for ( let x = 0; x < _xRepeat; x++ ) {
+		hexes.push([_margin + (3 + x * 6) * _hexScale + (5 + 10 * x), _margin + y * ((_hexScale * 4) + 5) + _hexScale + 10]);
+	}
+}
+
+setTimeout(draw);
+setInterval(draw, 150);
+
+function resize() {
+	_cvs.width = innerWidth - 1;
+	_cvs.height = innerHeight - 1;
+}
+
+function draw() {
+	resize();
+	drawHexes();
+}
+
+function randOffset() {
+	const M = 1;
+	return -M + parseInt(Math.random() * (1 + 2 * M));
+}
+
+function drawHexes() {
+	hexes.forEach(([x, y]) => drawHex(x + randOffset(), y + randOffset()));
+}
+
+function drawHex(x, y, color) {
+	_ctx.strokeStyle = '#' + parseInt(6 + Math.random() * 4).toString(16).repeat(3);
+
+	_ctx.beginPath();
+	_ctx.moveTo(x + 1 * _hexScale, y + 0 * _hexScale);
+	_ctx.lineTo(x + 3 * _hexScale, y + 0 * _hexScale);
+	_ctx.lineTo(x + 4 * _hexScale, y + 2 * _hexScale);
+	_ctx.lineTo(x + 3 * _hexScale, y + 4 * _hexScale);
+	_ctx.lineTo(x + 1 * _hexScale, y + 4 * _hexScale);
+	_ctx.lineTo(x + 0 * _hexScale, y + 2 * _hexScale);
+	_ctx.closePath();
+	_ctx.stroke();
+}
+</script>
