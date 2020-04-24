@@ -1,0 +1,26 @@
+<script>
+Array.prototype.invoke = function(method, args = []) {
+	return this.map(el => el[method](...args));
+};
+
+Object.defineProperty(Array.prototype, 'last', {
+	value: function() {
+		return this.length ? this[this.length-1] : undefined;
+	},
+});
+
+const a = ['a', 'b'];
+
+console.log(Object.keys(a));
+console.log([...a]);
+for (let k in a) {
+	console.log(k);
+}
+for (let v of a) {
+	console.log(v);
+}
+
+console.log(a.invoke('big'));
+console.log(a.last);
+console.log(a.last());
+</script>
