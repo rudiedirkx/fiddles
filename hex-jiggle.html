@@ -1,3 +1,5 @@
+<html style="--bg: #eee">
+
 <title>Hex jiggle</title>
 <!-- <meta name="viewport" content="width=device-width, initial-scale=1" /> -->
 
@@ -9,7 +11,7 @@ html, body {
 	height: 100vh;
 }
 html, body, canvas {
-	background: #eee;
+	background: var(--bg);
 }
 </style>
 
@@ -21,6 +23,18 @@ const _hexScale = 10;
 const _margin = -20;
 const _xRepeat = 40;
 const _yRepeat = 40;
+
+const grayscale = () => '#' + parseInt(6 + Math.random() * 4).toString(16).repeat(3);
+const COLORS = [
+	['#eee', grayscale],
+	['#333', grayscale],
+	['darkgreen', grayscale],
+	['green', grayscale],
+	['lightgreen', grayscale],
+];
+var COLOR = 1;
+var BGC = COLORS[COLOR][0];
+var HEXC = COLORS[COLOR][1];
 
 // Context
 const _cvs = document.getElementById('c');
@@ -61,7 +75,8 @@ function drawHexes() {
 }
 
 function drawHex(x, y, color) {
-	_ctx.strokeStyle = '#' + parseInt(6 + Math.random() * 4).toString(16).repeat(3);
+	document.documentElement.style.setProperty('--bg', BGC);
+	_ctx.strokeStyle = HEXC();
 
 	_ctx.beginPath();
 	_ctx.moveTo(x + 1 * _hexScale, y + 0 * _hexScale);
@@ -73,4 +88,8 @@ function drawHex(x, y, color) {
 	_ctx.closePath();
 	_ctx.stroke();
 }
+
+_cvs.addEventListener('click', function(e) {
+	[BGC, HEXC] = COLORS[++COLOR % COLORS.length];
+});
 </script>
