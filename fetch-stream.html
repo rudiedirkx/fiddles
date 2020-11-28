@@ -1,0 +1,29 @@
+<button autofocus>fetch</button>
+
+<script>
+const url = '/tests/stream-output.php';
+
+function load() {
+    fetch(url).then(rsp => {
+        console.log(rsp);
+        return rsp;
+    }).then(rsp => {
+        console.log('X-Loops', rsp.headers.get('X-Loops'));
+        return rsp;
+    }).then(async (rsp) => {
+        const reader = rsp.body.getReader();
+        var len = 0;
+        while (true) {
+            const {done, value} = await reader.read();
+            if (done) break;
+            len += value.length;
+            console.log(len);
+        }
+        console.log('--------');
+    });
+}
+
+document.querySelector('button').addEventListener('click', e => {
+    load();
+});
+</script>
