@@ -1,0 +1,25 @@
+<style>
+video {
+	max-width: 50vw;
+}
+</style>
+
+<p><button>Share</button></p>
+
+<video autoplay></video>
+
+<script>
+const btn = document.querySelector('button');
+const vid = document.querySelector('video');
+
+const selectScreen = () => {
+	navigator.mediaDevices.getDisplayMedia().then(med => {
+console.log(med);
+		vid.srcObject = med;
+	});
+};
+
+btn.onclick = e => selectScreen();
+
+setTimeout(selectScreen, 1000);
+</script>

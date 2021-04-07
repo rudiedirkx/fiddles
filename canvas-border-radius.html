@@ -1,0 +1,38 @@
+<style>
+canvas {
+	background: #eee;
+}
+</style>
+
+<canvas width="400" height="200"></canvas>
+
+<script>
+const canvas = document.querySelector('canvas');
+const ctx = canvas.getContext('2d');
+
+var from, to, R;
+
+ctx.beginPath();
+ctx.moveTo(20, 10);
+ctx.arcTo(380, 10, 390, 20, 5);
+ctx.arcTo(390, 80, 380, 90, 5);
+ctx.arcTo(20, 90, 10, 80, 5);
+ctx.arcTo(10, 20, 20, 10, 5);
+ctx.closePath();
+ctx.strokeStyle = 'black';
+ctx.lineWidth = 2;
+ctx.stroke();
+
+R = 3;
+from = {x: 10, y: 110};
+to = {x: 390, y: 190};
+ctx.beginPath();
+ctx.arc(to.x - R, from.y + R, R, -Math.PI/2, 0);
+ctx.arc(to.x - R, to.y - R, R, 0, Math.PI/2);
+ctx.arc(from.x + R, to.y - R, R, Math.PI/2, Math.PI);
+ctx.arc(from.x + R, from.y + R, R, Math.PI, -Math.PI/2);
+ctx.closePath();
+ctx.strokeStyle = 'black';
+ctx.lineWidth = 2;
+ctx.stroke();
+</script>
