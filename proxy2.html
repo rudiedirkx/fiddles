@@ -1,0 +1,47 @@
+<script>
+localStorage.proxy2 = JSON.stringify({
+	action: 'delete',
+	ids: [11, 12, 13],
+	owner: {name: 'rdx', country: 'NL'},
+});
+
+class LocalStorageProxy {
+	constructor(name, def = {}) {
+		this.name = name;
+		const json = localStorage.getItem(name);
+		this.value = def;
+		try {
+			this.value = JSON.parse(json);
+		}
+		catch (ex) {}
+
+		return new Proxy(this.value, this);
+	}
+
+	get(target, prop, receiver) {
+// console.log('get', [...arguments]);
+		// return target[prop];
+		return typeof target[prop] == 'object' ? new Proxy(target[prop], this) : target[prop];
+		// return Reflect.get(...arguments);
+	}
+
+	set(target, prop, value) {
+console.log('set', [...arguments]/*, this*/);
+		target[prop] = value;
+		// Reflect.set(...arguments);
+		localStorage.setItem(this.name, JSON.stringify(this.value));
+		return true;
+	}
+}
+
+const storage = new LocalStorageProxy('proxy2');
+console.log(storage);
+console.log(storage.owner.name);
+console.log(storage.owner.name = 'asd');
+storage.ids.push(21);
+storage.ids.shift();
+storage.owner.active = false;
+storage.ids.length = 0;
+console.log(storage);
+console.log(localStorage.proxy2);
+</script>

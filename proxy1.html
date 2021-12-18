@@ -1,0 +1,24 @@
+<script>
+const target = {
+	message1: "hello",
+	message2: "everyone"
+};
+
+const handler3 = {
+	get(target, prop, receiver) {
+		if (prop === "message2") {
+			return "world";
+		}
+		// console.log(receiver === proxy3);
+		return target[prop];
+		// return Reflect.get(...arguments);
+	},
+};
+
+const proxy3 = new Proxy(target, handler3);
+
+console.time('logs');
+console.log(proxy3.message1); // hello
+console.log(proxy3.message2); // world
+console.timeEnd('logs');
+</script>
