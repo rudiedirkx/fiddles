@@ -151,9 +151,6 @@ class Draw {
 
 
 r.extend(Coords2D, {
-	round() {
-		return new Coords2D(Math.round(this.x), Math.round(this.y));
-	},
 	multiply(factor) {
 		return new Coords2D(this.x * factor, this.y * factor);
 	},
