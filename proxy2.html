@@ -1,10 +1,6 @@
-<script>
-localStorage.proxy2 = JSON.stringify({
-	action: 'delete',
-	ids: [11, 12, 13],
-	owner: {name: 'rdx', country: 'NL'},
-});
+<title>localStorage Proxy</title>
 
+<script>
 class LocalStorageProxy {
 	constructor(name, def = {}) {
 		this.name = name;
@@ -25,23 +21,43 @@ class LocalStorageProxy {
 		// return Reflect.get(...arguments);
 	}
 
-	set(target, prop, value) {
-console.log('set', [...arguments]/*, this*/);
+	set(target, prop, value, receiver) {
 		target[prop] = value;
+		const json = JSON.stringify(this.value);
+console.log('[set]', prop, `of ${typeof target} =`, value);
+console.log(json);
 		// Reflect.set(...arguments);
-		localStorage.setItem(this.name, JSON.stringify(this.value));
+		localStorage.setItem(this.name, json);
 		return true;
 	}
 }
 
+localStorage.proxy2 = JSON.stringify({
+	action: 'delete',
+	ids: [11, 12, 13],
+	owner: {name: 'rdx', country: 'NL'},
+});
+
 const storage = new LocalStorageProxy('proxy2');
 console.log(storage);
 console.log(storage.owner.name);
-console.log(storage.owner.name = 'asd');
-storage.ids.push(21);
-storage.ids.shift();
-storage.owner.active = false;
-storage.ids.length = 0;
+
+function test(name, fn) {
+	console.log('');
+	console.log(`${name}:`);
+	console.time(name);
+	fn();
+	console.timeEnd(name);
+}
+
+test('string', () => storage.owner.name = 'asd');
+test('push', () => storage.ids.push(21));
+test('shift', () => storage.ids.shift());
+test('bool 1', () => storage.owner.active = false);
+test('bool 2', () => storage.owner.active = true);
+test('length', () => storage.ids.length = 0);
+test('array', () => storage.ids = [22]);
+
 console.log(storage);
 console.log(localStorage.proxy2);
 </script>

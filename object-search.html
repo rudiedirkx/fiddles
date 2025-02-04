@@ -3,7 +3,7 @@ obj = {"responseContext":{"serviceTrackingParams":[{"service":"GFEEDBACK","param
 // obj = {a: ['a', 'x', 'c'], b:{c:{d:[['x']]}}}
 </script>
 <script>
-window.searchForValueInObject = function(root, value) {
+window.searchForValueInObject = function(root, value, replacer) {
 	const paths = [];
 	const searched = [root];
 
@@ -16,6 +16,9 @@ window.searchForValueInObject = function(root, value) {
 		for (let k in obj) {
 			if (matcher(obj[k], k)) {
 				paths.push(path.concat(k));
+				if (replacer) {
+					obj[k] = replacer(obj[k]);
+				}
 			}
 			else if (iterable(obj[k])) {
 				if (!searched.includes(obj[k])) {
@@ -32,4 +35,5 @@ window.searchForValueInObject = function(root, value) {
 
 console.log(searchForValueInObject(obj, 'Music'));
 console.log(searchForValueInObject(obj, (v, k) => k === 'params'));
+console.log(searchForValueInObject(obj, v => typeof v == 'string' && v.includes('9WNNpN6lYeA'), v => v.replaceAll('9WNNpN6lYeA', 'ABCDEFGHIJK')));
 </script>

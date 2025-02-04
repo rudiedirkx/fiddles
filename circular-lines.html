@@ -23,6 +23,12 @@ function line(ax, ay, bx, by) {
 	ctx.stroke();
 }
 
+function point(x, y) {
+	ctx.beginPath();
+	ctx.arc(x, y, 2, 0, 2*Math.PI);
+	ctx.fill();
+}
+
 function randomPoint() {
 	var angle = Math.random() * Math.PI * 2;
 	var x = c + r * Math.sin(angle);
@@ -47,6 +53,8 @@ function draw() {
 		var p2 = randomPoint();
 		var d = distance(p1, p2);
 		if ( d >= l * r ) {
+// point(p1.x, p1.y);
+// point(p2.x, p2.y);
 			points++;
 			line(p1.x, p1.y, p2.x, p2.y);
 		}
