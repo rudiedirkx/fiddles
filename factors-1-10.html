@@ -1,0 +1,36 @@
+<table></table>
+
+<style>
+table {
+  border-collapse: collapse;
+}
+td {
+  border: solid 1px #aaa;
+  padding: 3px 6px;
+}
+</style>
+
+<script>
+(function() {
+
+const o = Array(101).fill(0);
+for (let n1=1; n1<=10; n1++) {
+  for (let n2=1; n2<=10; n2++) {
+    o[n1*n2]++;
+  }
+}
+console.log(o);
+
+const html = [];
+for (let y=0; y<10; y++) {
+  html.push('<tr>');
+  for (let x=0; x<10; x++) {
+    const t = o[1 + y*10 + x];
+    html.push('<td>' + (t || '') + '</td>');
+  }
+  html.push('</tr>');
+}
+document.querySelector('table').innerHTML = html.join('');
+
+})();
+</script>
