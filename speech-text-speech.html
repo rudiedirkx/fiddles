@@ -1,0 +1,32 @@
+<p>Just start talking. <button>Talk again</button></p>
+
+<script>
+const recognition = new SpeechRecognition();
+// let listen = true;
+recognition.onresult = e => {
+	// if (!listen) return;
+	// recognition.stop();
+
+	const sentence = e.results[e.resultIndex][0].transcript;
+	console.log(Array.from(e.results[e.resultIndex]).map(r => r.transcript));
+	const el = document.createElement('p');
+	el.textContent = sentence;
+	document.body.append(el);
+	scrollTo(0, 99999);
+
+	const message = new SpeechSynthesisUtterance(sentence);
+	message.onend = e2 => {
+		console.log(e2);
+		// recognition.start();
+		// listen = true;
+	};
+	// listen = false;
+	speechSynthesis.speak(message);
+};
+// recognition.continuous = true;
+recognition.start();
+
+document.querySelector('button').addEventListener('click', e => {
+	recognition.start();
+});
+</script>
