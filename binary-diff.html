@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Binary Diff & Inspector</title>
+	<style>
+		html, body {
+			height: 100%;
+			margin: 0;
+			overflow: hidden;
+			display: flex;
+			flex-direction: column;
+			font-family: sans-serif;
+		}
+
+		.top-bar {
+			padding: 10px;
+			background: #f4f4f4;
+			border-bottom: 1px solid #ccc;
+			display: flex;
+			align-items: center;
+			gap: 20px;
+			flex-shrink: 0;
+		}
+
+		.stats-bar {
+			padding: 5px 10px;
+			background: #eee;
+			border-bottom: 1px solid #ccc;
+			font-size: 11px;
+			display: flex;
+			flex-shrink: 0;
+		}
+
+		.stat-side {
+			flex: 1;
+			white-space: nowrap;
+			overflow: hidden;
+			text-overflow: ellipsis;
+			box-sizing: border-box;
+		}
+
+		#stat1 {
+			padding: 0 10px 0 0;
+			border-right: 1px solid #ccc;
+		}
+
+		#stat2 {
+			padding: 0 10px;
+		}
+
+		.stats-spacer {
+			width: 200px;
+			flex-shrink: 0;
+		}
+
+		.main-layout {
+			display: flex;
+			flex: 1;
+			overflow: hidden;
+		}
+
+		.container {
+			display: flex;
+			flex: 1;
+			overflow: hidden;
+			font-family: monospace;
+			border-right: 1px solid #ccc;
+		}
+
+		.hex-column {
+			flex: 1;
+			border-right: 1px solid #eee;
+			padding: 10px;
+			overflow-y: scroll;
+			word-break: break-all;
+			line-height: 1.5;
+		}
+
+		.sidebar {
+			width: 200px;
+			background: #fcfcfc;
+			padding: 15px;
+			font-size: 12px;
+			flex-shrink: 0;
+			overflow-y: auto;
+		}
+
+		.sidebar h3 { font-size: 14px; margin: 0 0 10px 0; border-bottom: 1px solid #ddd; padding-bottom: 5px; }
+
+		.endian-toggle {
+			margin-bottom: 15px;
+			padding-bottom: 10px;
+			border-bottom: 1px solid #eee;
+		}
+
+		.inspect-group {
+			border: 1px solid transparent;
+			border-radius: 4px;
+			margin-bottom: 8px;
+			padding: 2px;
+			cursor: pointer;
+		}
+
+		.inspect-group:hover {
+			background: #f0f0f0;
+			border-color: #ddd;
+		}
+
+		.inspect-group.locked {
+			background: #e3f2fd;
+			border-color: #bbdefb;
+		}
+
+		.inspect-row {
+			display: flex;
+			justify-content: space-between;
+			margin-bottom: 2px;
+			padding: 0 4px;
+			pointer-events: none;
+		}
+
+		.inspect-label { color: #666; font-weight: bold; }
+		.inspect-val { font-family: monospace; color: #000; }
+
+		.byte {
+			display: inline-block;
+			width: 2.2ch;
+			text-align: center;
+			margin-right: 2px;
+			margin-bottom: 2px;
+			cursor: pointer;
+			border: 1px solid transparent;
+			box-sizing: border-box;
+		}
+
+		.byte.inspect-active { border-color: #333 !important; background-color: #fff !important; z-index: 10; }
+		.byte.inspect-range { background-color: #d1e7ff !important; border-color: #a0c4ff !important; }
+
+		.diff { background-color: #ffcccc; color: red; font-weight: bold; }
+		.match { background-color: #eee; color: #888; }
+		.gap { color: #ccc !important; background-color: transparent !important; font-weight: normal !important; }
+
+		.spacer {
+			display: block;
+			padding: 8px;
+			background: #f8f8f8;
+			border: 1px dashed #ccc;
+			margin: 10px 0;
+			text-align: center;
+			color: #444;
+			font-size: 11px;
+			font-weight: bold;
+			clear: both;
+		}
+	</style>
+</head>
+<body>
+	<div class="top-bar">
+		<div>
+			<label>Left: </label><input type="file" id="file1">
+			<label>Right: </label><input type="file" id="file2">
+			<button onclick="handleCompareClick()">Compare</button>
+		</div>
+		<div style="border-left: 1px solid #ccc; padding-left: 20px;">
+			<label>View: </label>
+			<input type="radio" name="viewMode" value="hex" id="modeHex" onclick="saveState(); updateView()">
+			<label for="modeHex">Hex</label>
+			<input type="radio" name="viewMode" value="ascii" id="modeAscii" onclick="saveState(); updateView()" checked>
+			<label for="modeAscii">ASCII</label>
+		</div>
+	</div>
+
+	<div class="stats-bar">
+		<div id="stat1" class="stat-side">Left: --</div>
+		<div id="stat2" class="stat-side">Right: --</div>
+		<div class="stats-spacer"></div>
+	</div>
+
+	<div class="main-layout">
+		<div id="main-wrapper" class="container">
+			<div id="out1" class="hex-column"></div>
+			<div id="out2" class="hex-column"></div>
+		</div>
+
+		<div class="sidebar" id="sidebar">
+			<h3>Inspector</h3>
+			<div class="endian-toggle">
+				<input type="radio" name="endian" value="be" id="be" checked onclick="saveState(); refreshInspector()">
+				<label for="be">Big-Endian</label><br>
+				<input type="radio" name="endian" value="le" id="le" onclick="saveState(); refreshInspector()">
+				<label for="le">Little-Endian</label>
+			</div>
+			<div id="inspect-content">
+				<p style="color:#999; font-style: italic;">Click a byte to inspect</p>
+			</div>
+		</div>
+	</div>
+
+	<script>
+		let leftBuffer = null;
+		let rightBuffer = null;
+		let leftName = "";
+		let rightName = "";
+		let lastInspectData = null;
+		let lastSelectedRange = 1;
+
+		const DB_NAME = "BinaryDiffCache";
+		const STORE_NAME = "files";
+		const STATE_STORE = "state";
+
+		function getDB() {
+			return new Promise((resolve, reject) => {
+				const request = indexedDB.open(DB_NAME, 2);
+				request.onupgradeneeded = (e) => {
+					const db = e.target.result;
+					if (!db.objectStoreNames.contains(STORE_NAME)) db.createObjectStore(STORE_NAME);
+					if (!db.objectStoreNames.contains(STATE_STORE)) db.createObjectStore(STATE_STORE);
+				};
+				request.onsuccess = (e) => resolve(e.target.result);
+				request.onerror = (e) => reject(e);
+			});
+		}
+
+		async function saveState() {
+			const db = await getDB();
+			const tx = db.transaction(STATE_STORE, "readwrite");
+			const store = tx.objectStore(STATE_STORE);
+			store.put(document.querySelector('input[name="viewMode"]:checked').value, "viewMode");
+			store.put(document.querySelector('input[name="endian"]:checked').id, "endian");
+			store.put(lastSelectedRange, "inspectLen");
+			store.put(leftName, "leftName");
+			store.put(rightName, "rightName");
+		}
+
+		async function saveFiles(v1, v2) {
+			const db = await getDB();
+			const tx = db.transaction(STORE_NAME, "readwrite");
+			const store = tx.objectStore(STORE_NAME);
+			if (v1.length < 102400 && v2.length < 102400) {
+				store.put(v1, "left");
+				store.put(v2, "right");
+			} else {
+				store.clear();
+			}
+		}
+
+		function updateView() {
+			const mode = document.querySelector('input[name="viewMode"]:checked').value;
+			document.querySelectorAll('.byte').forEach((el) => {
+				el.innerText = el.getAttribute('data-' + mode);
+			});
+		}
+
+		function escapeAttr(str) {
+			return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+		}
+
+		function createByteSpan(b, type, side, idx) {
+			const isGap = b === undefined;
+			const hexVal = isGap ? '--' : b.toString(16).padStart(2, '0');
+			const asciiVal = !isGap ? (b > 32 && b <= 126 ? String.fromCharCode(b) : hexVal) : '--';
+			const finalType = isGap ? 'gap' : type;
+			const clickAttr = !isGap ? `onclick="inspect(${side}, ${idx}, this)"` : '';
+			const currentMode = document.querySelector('input[name="viewMode"]:checked').value;
+			const initialText = currentMode === 'hex' ? hexVal : asciiVal;
+			return `<span class="byte ${finalType}" data-hex="${hexVal}" data-ascii="${escapeAttr(asciiVal)}" ${clickAttr} data-side="${side}" data-idx="${idx}">${initialText}</span>`;
+		}
+
+		function refreshInspector() {
+			if (lastInspectData) {
+				const { side, idx } = lastInspectData;
+				const el = document.querySelector(`.byte[data-side="${side}"][data-idx="${idx}"]`);
+				if (el) inspect(side, idx, el);
+			}
+		}
+
+		function inspect(side, idx, el) {
+			lastInspectData = { side, idx };
+			document.querySelectorAll('.byte').forEach((b) => b.classList.remove('inspect-active', 'inspect-range'));
+			const buf = (side === 1) ? leftBuffer : rightBuffer;
+			if (!buf || idx >= buf.length) return;
+			el.classList.add('inspect-active');
+			const view = new DataView(buf.buffer);
+			const isLittleEndian = document.getElementById('le').checked;
+			const html = [];
+			const addGroup = (len, rows) => {
+				const isLocked = (len === lastSelectedRange);
+				html.push(`<div class="inspect-group ${isLocked ? 'locked' : ''}"
+							  onclick="lastSelectedRange=${len}; saveState(); refreshInspector(); event.stopPropagation();">`);
+				rows.forEach((r) => {
+					html.push(`<div class="inspect-row"><span class="inspect-label">${r.l}</span><span class="inspect-val">${r.v}</span></div>`);
+				});
+				html.push(`</div>`);
+			};
+			html.push(`<div class="inspect-row"><span class="inspect-label">Offset</span><span class="inspect-val">0x${idx.toString(16).toUpperCase()}</span></div>`);
+			html.push(`<div class="inspect-row"><span class="inspect-label">Index</span><span class="inspect-val">${idx.toLocaleString()}</span></div>`);
+			html.push('<hr style="border:0; border-bottom:1px solid #eee; margin:10px 0;">');
+			addGroup(1, [{ l: "Int8", v: view.getInt8(idx) }, { l: "Uint8", v: view.getUint8(idx) }]);
+			if (idx + 1 < buf.length) {
+				addGroup(2, [{ l: "Int16", v: view.getInt16(idx, isLittleEndian) }, { l: "Uint16", v: view.getUint16(idx, isLittleEndian) }]);
+			}
+			if (idx + 3 < buf.length) {
+				addGroup(4, [{ l: "Int32", v: view.getInt32(idx, isLittleEndian) }, { l: "Uint32", v: view.getUint32(idx, isLittleEndian) }]);
+			}
+			document.getElementById('inspect-content').innerHTML = html.join('');
+			highlightRange(side, idx, lastSelectedRange);
+		}
+
+		function highlightRange(side, startIdx, len) {
+			document.querySelectorAll('.byte').forEach((b) => b.classList.remove('inspect-range'));
+			for(let i = 0; i < len; i++) {
+				const target = document.querySelector(`.byte[data-side="${side}"][data-idx="${startIdx + i}"]`);
+				if (target) target.classList.add('inspect-range');
+			}
+		}
+
+		async function handleCompareClick() {
+			const f1 = document.getElementById('file1').files[0];
+			const f2 = document.getElementById('file2').files[0];
+			if (!f1 || !f2) return;
+			leftName = f1.name;
+			rightName = f2.name;
+			const [buf1, buf2] = await Promise.all([f1.arrayBuffer(), f2.arrayBuffer()]);
+			leftBuffer = new Uint8Array(buf1);
+			rightBuffer = new Uint8Array(buf2);
+			saveFiles(leftBuffer, rightBuffer);
+			saveState();
+			renderDiff();
+		}
+
+		function renderDiff() {
+			document.getElementById('stat1').innerText = `${leftName || "Left File"} (${leftBuffer.length.toLocaleString()} bytes)`;
+			let rightInfo = `${rightName || "Right File"} (${rightBuffer.length.toLocaleString()} bytes)`;
+			if (rightBuffer.length !== leftBuffer.length) {
+				const diff = rightBuffer.length - leftBuffer.length;
+				rightInfo += ` (${diff > 0 ? "+" : ""}${diff.toLocaleString()})`;
+			}
+			document.getElementById('stat2').innerText = rightInfo;
+
+			let h1 = '', h2 = '';
+			let p1 = 0, p2 = 0;
+			const SYNC_LEN = 24, CONTEXT = 4;
+			while (p1 < leftBuffer.length || p2 < rightBuffer.length) {
+				let matchStart1 = p1, matchStart2 = p2;
+				while (p1 < leftBuffer.length && p2 < rightBuffer.length && leftBuffer[p1] === rightBuffer[p2]) { p1++; p2++; }
+				let matchLen = p1 - matchStart1;
+				if (matchLen > 0) {
+					const atStart = (matchStart1 === 0);
+					const atEnd = (p1 >= leftBuffer.length && p2 >= rightBuffer.length);
+					const showLimit = atStart ? 0 : CONTEXT;
+					let showStart = Math.min(matchLen, showLimit);
+					for (let i = 0; i < showStart; i++) {
+						h1 += createByteSpan(leftBuffer[matchStart1 + i], 'match', 1, matchStart1 + i);
+						h2 += createByteSpan(rightBuffer[matchStart2 + i], 'match', 2, matchStart2 + i);
+					}
+					const remainingMatch = matchLen - showStart;
+					const endLimit = atEnd ? 0 : CONTEXT;
+					if (remainingMatch > endLimit) {
+						let skipped = remainingMatch - endLimit;
+						let spacer = `<div class="spacer">... ${skipped.toLocaleString()} bytes identical ...</div>`;
+						h1 += spacer; h2 += spacer;
+						for (let i = matchLen - endLimit; i < matchLen; i++) {
+							h1 += createByteSpan(leftBuffer[matchStart1 + i], 'match', 1, matchStart1 + i);
+							h2 += createByteSpan(rightBuffer[matchStart2 + i], 'match', 2, matchStart2 + i);
+						}
+					} else {
+						for (let i = showStart; i < matchLen; i++) {
+							h1 += createByteSpan(leftBuffer[matchStart1 + i], 'match', 1, matchStart1 + i);
+							h2 += createByteSpan(rightBuffer[matchStart2 + i], 'match', 2, matchStart2 + i);
+						}
+					}
+				}
+				if (p1 >= leftBuffer.length && p2 >= rightBuffer.length) break;
+				let syncP1 = -1, syncP2 = -1, foundSync = false;
+				const limit = 1000;
+				for (let off = 1; off < limit; off++) {
+					if (p1 + off + SYNC_LEN < leftBuffer.length) {
+						let m = true; for(let k=0; k<SYNC_LEN; k++) if(leftBuffer[p1+off+k] !== rightBuffer[p2+k]) { m = false; break; }
+						if(m) { syncP1 = p1 + off; syncP2 = p2; foundSync = true; break; }
+					}
+					if (p2 + off + SYNC_LEN < rightBuffer.length) {
+						let m = true; for(let k=0; k<SYNC_LEN; k++) if(leftBuffer[p1+k] !== rightBuffer[p2+off+k]) { m = false; break; }
+						if(m) { syncP1 = p1; syncP2 = p2 + off; foundSync = true; break; }
+					}
+				}
+				if (!foundSync) { syncP1 = p1 + 1; syncP2 = p2 + 1; }
+
+				// CRITICAL FIX: Ensure diff blocks always render same number of elements on both sides
+				let diffLen1 = syncP1 - p1, diffLen2 = syncP2 - p2, maxDiff = Math.max(diffLen1, diffLen2);
+				for (let i = 0; i < maxDiff; i++) {
+					h1 += createByteSpan((i < diffLen1) ? leftBuffer[p1 + i] : undefined, 'diff', 1, p1 + i);
+					h2 += createByteSpan((i < diffLen2) ? rightBuffer[p2 + i] : undefined, 'diff', 2, p2 + i);
+				}
+				p1 = syncP1; p2 = syncP2;
+			}
+			document.getElementById('out1').innerHTML = h1; document.getElementById('out2').innerHTML = h2;
+			document.getElementById('out1').onscroll = () => document.getElementById('out2').scrollTop = document.getElementById('out1').scrollTop;
+			document.getElementById('out2').onscroll = () => document.getElementById('out1').scrollTop = document.getElementById('out2').scrollTop;
+			updateView();
+		}
+
+		window.onload = async () => {
+			const db = await getDB();
+			const txState = db.transaction(STATE_STORE, "readonly");
+			const stateStore = txState.objectStore(STATE_STORE);
+			const vm = await new Promise((r) => stateStore.get("viewMode").onsuccess = (e) => r(e.target.result));
+			const en = await new Promise((r) => stateStore.get("endian").onsuccess = (e) => r(e.target.result));
+			const il = await new Promise((r) => stateStore.get("inspectLen").onsuccess = (e) => r(e.target.result));
+			const ln = await new Promise((r) => stateStore.get("leftName").onsuccess = (e) => r(e.target.result));
+			const rn = await new Promise((r) => stateStore.get("rightName").onsuccess = (e) => r(e.target.result));
+			if (vm) document.querySelector(`input[name="viewMode"][value="${vm}"]`).checked = true;
+			if (en) document.getElementById(en).checked = true;
+			if (il) lastSelectedRange = il;
+			if (ln) leftName = ln;
+			if (rn) rightName = rn;
+			const txFiles = db.transaction(STORE_NAME, "readonly");
+			const store = txFiles.objectStore(STORE_NAME);
+			const leftReq = store.get("left");
+			const rightReq = store.get("right");
+			txFiles.oncomplete = () => {
+				if (leftReq.result && rightReq.result) {
+					leftBuffer = leftReq.result;
+					rightBuffer = rightReq.result;
+					renderDiff();
+				}
+			};
+		};
+	</script>
+</body>
+</html>
