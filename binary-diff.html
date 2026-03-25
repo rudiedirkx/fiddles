@@ -65,6 +65,7 @@
 			overflow: hidden;
 			font-family: monospace;
 			border-right: 1px solid #ccc;
+			outline: none;
 		}
 
 		.hex-column {
@@ -77,7 +78,7 @@
 		}
 
 		.sidebar {
-			width: 200px;
+			width: 240px;
 			background: #fcfcfc;
 			padding: 15px;
 			font-size: 12px;
@@ -97,7 +98,7 @@
 			border: 1px solid transparent;
 			border-radius: 4px;
 			margin-bottom: 8px;
-			padding: 2px;
+			padding: 4px;
 			cursor: pointer;
 		}
 
@@ -120,7 +121,7 @@
 		}
 
 		.inspect-label { color: #666; font-weight: bold; }
-		.inspect-val { font-family: monospace; color: #000; }
+		.inspect-val { font-family: monospace; color: #000; word-break: break-all; text-align: right; margin-left: 10px; }
 
 		.byte {
 			display: inline-block;
@@ -130,7 +131,7 @@
 			margin-bottom: 2px;
 			cursor: pointer;
 			border: 1px solid transparent;
-			box-sizing: border-box;
+			box-sizing: content-box;
 		}
 
 		.byte.inspect-active { border-color: #333 !important; background-color: #fff !important; z-index: 10; }
@@ -177,7 +178,7 @@
 	</div>
 
 	<div class="main-layout">
-		<div id="main-wrapper" class="container">
+		<div id="main-wrapper" class="container" tabindex="0">
 			<div id="out1" class="hex-column"></div>
 			<div id="out2" class="hex-column"></div>
 		</div>
@@ -197,16 +198,21 @@
 	</div>
 
 	<script>
+		const SYNC_LEN = 24;
+		const CONTEXT = 7;
+		const SYNC_LIMIT = 1000;
+		const FLOAT_PRECISION = 8;
+		const MAX_CACHE_SIZE = 102400;
+		const DB_NAME = "BinaryDiffCache";
+		const STORE_NAME = "files";
+		const STATE_STORE = "state";
+
 		let leftBuffer = null;
 		let rightBuffer = null;
 		let leftName = "";
 		let rightName = "";
 		let lastInspectData = null;
 		let lastSelectedRange = 1;
-
-		const DB_NAME = "BinaryDiffCache";
-		const STORE_NAME = "files";
-		const STATE_STORE = "state";
 
 		function getDB() {
 			return new Promise((resolve, reject) => {
@@ -236,7 +242,7 @@
 			const db = await getDB();
 			const tx = db.transaction(STORE_NAME, "readwrite");
 			const store = tx.objectStore(STORE_NAME);
-			if (v1.length < 102400 && v2.length < 102400) {
+			if (v1.length < MAX_CACHE_SIZE && v2.length < MAX_CACHE_SIZE) {
 				store.put(v1, "left");
 				store.put(v2, "right");
 			} else {
@@ -285,10 +291,13 @@
 			const html = [];
 			const addGroup = (len, rows) => {
 				const isLocked = (len === lastSelectedRange);
-				html.push(`<div class="inspect-group ${isLocked ? 'locked' : ''}"
-							  onclick="lastSelectedRange=${len}; saveState(); refreshInspector(); event.stopPropagation();">`);
+				html.push(`<div class="inspect-group ${isLocked ? 'locked' : ''}" onclick="lastSelectedRange=${len}; saveState(); refreshInspector(); event.stopPropagation();">`);
 				rows.forEach((r) => {
-					html.push(`<div class="inspect-row"><span class="inspect-label">${r.l}</span><span class="inspect-val">${r.v}</span></div>`);
+					let val = r.v;
+					if (typeof val === 'number' && !Number.isInteger(val)) {
+						val = val.toPrecision(FLOAT_PRECISION);
+					}
+					html.push(`<div class="inspect-row"><span class="inspect-label">${r.l}</span><span class="inspect-val">${val}</span></div>`);
 				});
 				html.push(`</div>`);
 			};
@@ -300,7 +309,10 @@
 				addGroup(2, [{ l: "Int16", v: view.getInt16(idx, isLittleEndian) }, { l: "Uint16", v: view.getUint16(idx, isLittleEndian) }]);
 			}
 			if (idx + 3 < buf.length) {
-				addGroup(4, [{ l: "Int32", v: view.getInt32(idx, isLittleEndian) }, { l: "Uint32", v: view.getUint32(idx, isLittleEndian) }]);
+				addGroup(4, [{ l: "Int32", v: view.getInt32(idx, isLittleEndian) }, { l: "Uint32", v: view.getUint32(idx, isLittleEndian) }, { l: "Float32", v: view.getFloat32(idx, isLittleEndian) }]);
+			}
+			if (idx + 7 < buf.length) {
+				addGroup(8, [{ l: "Int64", v: view.getBigInt64(idx, isLittleEndian) }, { l: "Float64", v: view.getFloat64(idx, isLittleEndian) }]);
 			}
 			document.getElementById('inspect-content').innerHTML = html.join('');
 			highlightRange(side, idx, lastSelectedRange);
@@ -313,6 +325,25 @@
 				if (target) target.classList.add('inspect-range');
 			}
 		}
+
+		document.addEventListener('keydown', (e) => {
+			if (!lastInspectData) return;
+			let { side, idx } = lastInspectData;
+			const buf = (side === 1) ? leftBuffer : rightBuffer;
+			if (e.key === 'ArrowLeft' && idx > 0) {
+				idx--;
+			} else if (e.key === 'ArrowRight' && idx < buf.length - 1) {
+				idx++;
+			} else {
+				return;
+			}
+			const el = document.querySelector(`.byte[data-side="${side}"][data-idx="${idx}"]`);
+			if (el) {
+				e.preventDefault();
+				inspect(side, idx, el);
+				el.scrollIntoView({ block: 'nearest' });
+			}
+		});
 
 		async function handleCompareClick() {
 			const f1 = document.getElementById('file1').files[0];
@@ -336,10 +367,8 @@
 				rightInfo += ` (${diff > 0 ? "+" : ""}${diff.toLocaleString()})`;
 			}
 			document.getElementById('stat2').innerText = rightInfo;
-
 			let h1 = '', h2 = '';
 			let p1 = 0, p2 = 0;
-			const SYNC_LEN = 24, CONTEXT = 4;
 			while (p1 < leftBuffer.length || p2 < rightBuffer.length) {
 				let matchStart1 = p1, matchStart2 = p2;
 				while (p1 < leftBuffer.length && p2 < rightBuffer.length && leftBuffer[p1] === rightBuffer[p2]) { p1++; p2++; }
@@ -372,8 +401,7 @@
 				}
 				if (p1 >= leftBuffer.length && p2 >= rightBuffer.length) break;
 				let syncP1 = -1, syncP2 = -1, foundSync = false;
-				const limit = 1000;
-				for (let off = 1; off < limit; off++) {
+				for (let off = 1; off < SYNC_LIMIT; off++) {
 					if (p1 + off + SYNC_LEN < leftBuffer.length) {
 						let m = true; for(let k=0; k<SYNC_LEN; k++) if(leftBuffer[p1+off+k] !== rightBuffer[p2+k]) { m = false; break; }
 						if(m) { syncP1 = p1 + off; syncP2 = p2; foundSync = true; break; }
@@ -384,8 +412,6 @@
 					}
 				}
 				if (!foundSync) { syncP1 = p1 + 1; syncP2 = p2 + 1; }
-
-				// CRITICAL FIX: Ensure diff blocks always render same number of elements on both sides
 				let diffLen1 = syncP1 - p1, diffLen2 = syncP2 - p2, maxDiff = Math.max(diffLen1, diffLen2);
 				for (let i = 0; i < maxDiff; i++) {
 					h1 += createByteSpan((i < diffLen1) ? leftBuffer[p1 + i] : undefined, 'diff', 1, p1 + i);
