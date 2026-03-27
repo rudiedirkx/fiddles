@@ -169,6 +169,10 @@
 			<input type="radio" name="viewMode" value="ascii" id="modeAscii" onclick="saveState(); updateView()" checked>
 			<label for="modeAscii">ASCII</label>
 		</div>
+		<div style="border-left: 1px solid #ccc; padding-left: 20px;">
+			<label>Margin: </label>
+			<input type="number" id="marginInput" value="7" min="7" step="7" max="700" style="width: 60px;" onchange="validateMargin(); saveState(); if(leftBuffer && rightBuffer) renderDiff();">
+		</div>
 	</div>
 
 	<div class="stats-bar">
@@ -199,7 +203,6 @@
 
 	<script>
 		const SYNC_LEN = 24;
-		const CONTEXT = 7;
 		const SYNC_LIMIT = 1000;
 		const FLOAT_PRECISION = 8;
 		const MAX_CACHE_SIZE = 102400;
@@ -227,6 +230,12 @@
 			});
 		}
 
+		function validateMargin() {
+			const input = document.getElementById('marginInput');
+			let val = parseInt(input.value);
+			if (isNaN(val) || val < 7) input.value = 7;
+		}
+
 		async function saveState() {
 			const db = await getDB();
 			const tx = db.transaction(STATE_STORE, "readwrite");
@@ -236,6 +245,7 @@
 			store.put(lastSelectedRange, "inspectLen");
 			store.put(leftName, "leftName");
 			store.put(rightName, "rightName");
+			store.put(document.getElementById('marginInput').value, "margin");
 		}
 
 		async function saveFiles(v1, v2) {
@@ -319,10 +329,10 @@
 		}
 
 		function highlightRange(side, startIdx, len) {
-			document.querySelectorAll('.byte').forEach((b) => b.classList.remove('inspect-range'));
 			for(let i = 0; i < len; i++) {
-				const target = document.querySelector(`.byte[data-side="${side}"][data-idx="${startIdx + i}"]`);
-				if (target) target.classList.add('inspect-range');
+				const targetIdx = startIdx + i;
+				const matches = document.querySelectorAll(`.byte[data-idx="${targetIdx}"]`);
+				matches.forEach(m => m.classList.add('inspect-range'));
 			}
 		}
 
@@ -360,6 +370,7 @@
 		}
 
 		function renderDiff() {
+			const contextMargin = parseInt(document.getElementById('marginInput').value) || 7;
 			document.getElementById('stat1').innerText = `${leftName || "Left File"} (${leftBuffer.length.toLocaleString()} bytes)`;
 			let rightInfo = `${rightName || "Right File"} (${rightBuffer.length.toLocaleString()} bytes)`;
 			if (rightBuffer.length !== leftBuffer.length) {
@@ -376,14 +387,14 @@
 				if (matchLen > 0) {
 					const atStart = (matchStart1 === 0);
 					const atEnd = (p1 >= leftBuffer.length && p2 >= rightBuffer.length);
-					const showLimit = atStart ? 0 : CONTEXT;
+					const showLimit = atStart ? 0 : contextMargin;
 					let showStart = Math.min(matchLen, showLimit);
 					for (let i = 0; i < showStart; i++) {
 						h1 += createByteSpan(leftBuffer[matchStart1 + i], 'match', 1, matchStart1 + i);
 						h2 += createByteSpan(rightBuffer[matchStart2 + i], 'match', 2, matchStart2 + i);
 					}
 					const remainingMatch = matchLen - showStart;
-					const endLimit = atEnd ? 0 : CONTEXT;
+					const endLimit = atEnd ? 0 : contextMargin;
 					if (remainingMatch > endLimit) {
 						let skipped = remainingMatch - endLimit;
 						let spacer = `<div class="spacer">... ${skipped.toLocaleString()} bytes identical ...</div>`;
@@ -434,11 +445,13 @@
 			const il = await new Promise((r) => stateStore.get("inspectLen").onsuccess = (e) => r(e.target.result));
 			const ln = await new Promise((r) => stateStore.get("leftName").onsuccess = (e) => r(e.target.result));
 			const rn = await new Promise((r) => stateStore.get("rightName").onsuccess = (e) => r(e.target.result));
+			const ma = await new Promise((r) => stateStore.get("margin").onsuccess = (e) => r(e.target.result));
 			if (vm) document.querySelector(`input[name="viewMode"][value="${vm}"]`).checked = true;
 			if (en) document.getElementById(en).checked = true;
 			if (il) lastSelectedRange = il;
 			if (ln) leftName = ln;
 			if (rn) rightName = rn;
+			if (ma) document.getElementById('marginInput').value = ma;
 			const txFiles = db.transaction(STORE_NAME, "readonly");
 			const store = txFiles.objectStore(STORE_NAME);
 			const leftReq = store.get("left");
