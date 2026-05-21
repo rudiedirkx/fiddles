@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Insecure Keypad Hack</title>
+	<style>
+		body {
+			background-color: #1a1a1a;
+			color: #fff;
+			font-family: 'Courier New', Courier, monospace;
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			justify-content: center;
+			height: 100vh;
+			margin: 0;
+		}
+
+		#device {
+			background-color: #2a2a2a;
+			padding: 30px;
+			border-radius: 10px;
+			box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+			border: 2px solid #333;
+		}
+
+		#led-container {
+			display: flex;
+			justify-content: center;
+			margin-bottom: 20px;
+			background-color: #111;
+			padding: 15px;
+			border-radius: 5px;
+			border: inset 2px #000;
+		}
+
+		#led {
+			width: 20px;
+			height: 20px;
+			border-radius: 50%;
+			background-color: #444; /* Default off state */
+			box-shadow: inset 0 2px 5px rgba(0,0,0,0.8);
+			transition: background-color 0.1s, box-shadow 0.1s;
+		}
+
+		.keypad {
+			display: grid;
+			grid-template-columns: repeat(3, 1fr);
+			gap: 10px;
+		}
+
+		button {
+			background-color: #333;
+			color: #fff;
+			border: none;
+			border-radius: 5px;
+			padding: 20px;
+			font-size: 24px;
+			font-weight: bold;
+			cursor: pointer;
+			box-shadow: 0 4px #111;
+			transition: all 0.1s;
+		}
+
+		button:active {
+			box-shadow: 0 0 #111;
+			transform: translateY(4px);
+		}
+
+		/* The zero button spans the middle */
+		.zero-btn {
+			grid-column: 2;
+		}
+
+		/* Animations for the LED */
+		.buzz-red {
+			background-color: #ff3333 !important;
+			box-shadow: 0 0 15px #ff3333, inset 0 1px 3px rgba(255,255,255,0.5) !important;
+			animation: shake 0.3s;
+		}
+
+		.beep-green {
+			background-color: #33ff33 !important;
+			box-shadow: 0 0 20px #33ff33, inset 0 1px 3px rgba(255,255,255,0.5) !important;
+		}
+
+		@keyframes shake {
+			0% { transform: translateX(0); }
+			25% { transform: translateX(-5px); }
+			50% { transform: translateX(5px); }
+			75% { transform: translateX(-5px); }
+			100% { transform: translateX(0); }
+		}
+
+		#stats {
+			margin-top: 20px;
+			text-align: center;
+			color: #888;
+		}
+
+		#victory-message {
+			display: none;
+			color: #33ff33;
+			font-weight: bold;
+			margin-top: 15px;
+			text-align: center;
+		}
+	</style>
+</head>
+<body>
+
+	<div id="device">
+		<div id="led-container">
+			<div id="led"></div>
+		</div>
+
+		<div class="keypad">
+			<button onclick="pressKey(1)">1</button>
+			<button onclick="pressKey(2)">2</button>
+			<button onclick="pressKey(3)">3</button>
+			<button onclick="pressKey(4)">4</button>
+			<button onclick="pressKey(5)">5</button>
+			<button onclick="pressKey(6)">6</button>
+			<button onclick="pressKey(7)">7</button>
+			<button onclick="pressKey(8)">8</button>
+			<button onclick="pressKey(9)">9</button>
+			<button class="zero-btn" onclick="pressKey(0)">0</button>
+		</div>
+
+		<div id="victory-message">ACCESS GRANTED</div>
+	</div>
+
+	<div id="stats">
+		Keypresses: <span id="press-count">0</span>
+	</div>
+
+	<script>
+		// Generate a random 6-digit code
+		let secretCode = [];
+		for (let i = 0; i < 6; i++) {
+			secretCode.push(Math.floor(Math.random() * 10));
+		}
+
+		// Log to console just in case you want to cheat/test
+		console.log("Secret Code (for testing):", secretCode.join(''));
+
+		let currentIndex = 0;
+		let pressCount = 0;
+		let isLocked = false; // Prevents pressing while animating
+
+		const led = document.getElementById('led');
+		const countDisplay = document.getElementById('press-count');
+		const victoryMessage = document.getElementById('victory-message');
+
+		function pressKey(digit) {
+			if (isLocked) return;
+
+			// Update stats
+			pressCount++;
+			countDisplay.innerText = pressCount;
+
+			// Check if the guessed digit matches the current required digit
+			if (digit === secretCode[currentIndex]) {
+				// Correct digit!
+				currentIndex++;
+
+				if (currentIndex === 6) {
+					// All 6 digits correct
+					triggerSuccess();
+				}
+				// If not 6 yet, do literally nothing (per your specifications)
+
+			} else {
+				// Wrong digit! Buzz red and reset the sequence.
+				triggerError();
+				currentIndex = 0;
+			}
+		}
+
+		function triggerError() {
+			isLocked = true;
+			led.classList.add('buzz-red');
+
+			// Remove the red buzz after 300ms
+			setTimeout(() => {
+				led.classList.remove('buzz-red');
+				isLocked = false;
+			}, 300);
+		}
+
+		function triggerSuccess() {
+			isLocked = true;
+			led.classList.add('beep-green');
+			victoryMessage.style.display = 'block';
+			// Stays green, game is over
+		}
+	</script>
+</body>
+</html>
