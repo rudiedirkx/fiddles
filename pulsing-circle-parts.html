@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>(0) Segment...</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #1a1a1a;
+            font-family: sans-serif;
+        }
+        canvas {
+            background-color: #1a1a1a;
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="ringCanvas" width="400" height="400"></canvas>
+
+    <script>
+        const canvas = document.getElementById('ringCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const numSegments = 6;
+        const cx = canvas.width / 2;
+        const cy = canvas.height / 2;
+        const baseOuterRadius = 130;
+        const innerRadius = baseOuterRadius * 0.7;
+        const bumpAmount = 25;
+        const pullDistance = 6;
+
+        const triggerInterval = 125;
+        const fadeDuration = triggerInterval * 5;
+        const cycleTime = triggerInterval * numSegments;
+
+        const startTime = Date.now();
+
+        function draw() {
+            const now = Date.now();
+            const elapsed = now - startTime;
+
+            const timeInCycle = elapsed % cycleTime;
+            const totalTriggers = Math.floor(elapsed / triggerInterval);
+
+            document.title = `(${totalTriggers}) Segment...`;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            for (let i = 0; i < numSegments; i++) {
+                const startAngle = (Math.PI * 2 * i) / numSegments - Math.PI / 2;
+                const endAngle = (Math.PI * 2 * (i + 1)) / numSegments - Math.PI / 2;
+
+                const midAngle = (startAngle + endAngle) / 2;
+                const sliceCx = cx + Math.cos(midAngle) * pullDistance;
+                const sliceCy = cy + Math.sin(midAngle) * pullDistance;
+
+                const segmentTriggerTime = i * triggerInterval;
+                let timeSinceTrigger = timeInCycle - segmentTriggerTime;
+
+                if (timeSinceTrigger < 0) {
+                    timeSinceTrigger += cycleTime;
+                }
+
+                let fadeValue = 0;
+                if (timeSinceTrigger < fadeDuration) {
+                    fadeValue = 1.0 - (timeSinceTrigger / fadeDuration);
+                }
+
+                const currentOuterRadius = baseOuterRadius + (bumpAmount * fadeValue);
+                const greenChannel = Math.floor(fadeValue * 255);
+
+                ctx.beginPath();
+                ctx.arc(sliceCx, sliceCy, currentOuterRadius, startAngle, endAngle);
+                ctx.arc(sliceCx, sliceCy, innerRadius, endAngle, startAngle, true);
+                ctx.closePath();
+
+                ctx.fillStyle = `rgb(255, ${greenChannel}, 0)`;
+                ctx.fill();
+            }
+        }
+
+        setInterval(draw, 16);
+    </script>
+</body>
+</html>
