@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Polyhedron Truncation Visualization</title>
+    <style>
+        body {
+            margin: 0;
+            background-color: #1a1a1a;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px 0;
+            font-family: sans-serif;
+            color: white;
+        }
+        h2 { margin: 0 0 15px 0; font-size: 1.1rem; font-weight: normal; text-align: center; }
+        .canvas-container {
+            width: 400px;
+            height: 400px;
+            margin-bottom: 50px;
+            background-color: #000;
+            border: 1px solid #333;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+    </style>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+<body>
+
+    <div>
+        <h2>Origin Shape (With Subtle Cut Lines)</h2>
+        <div id="origin-canvas" class="canvas-container"></div>
+    </div>
+
+    <div>
+        <h2>Truncated Icosahedron (The "Soccer Ball")</h2>
+        <div id="soccer-canvas" class="canvas-container"></div>
+    </div>
+
+    <div>
+        <h2>Regular Dodecahedron (12 Pentagons)</h2>
+        <div id="dodeca-canvas" class="canvas-container"></div>
+    </div>
+
+    <div>
+        <h2>Standard D20 (Regular Icosahedron)</h2>
+        <div id="d20-canvas" class="canvas-container"></div>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { ConvexGeometry } from 'three/addons/geometries/ConvexGeometry.js';
+
+        // --- Shared Setup Function ---
+        function createSceneSetup(containerId, cameraZ) {
+            const container = document.getElementById(containerId);
+            const scene = new THREE.Scene();
+
+            const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
+            camera.position.z = cameraZ;
+            scene.add(camera);
+
+            const renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            container.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
+            scene.add(ambientLight);
+
+            const torchLight = new THREE.DirectionalLight(0xffffff, 2.5);
+            torchLight.position.set(10, 5, 5);
+            camera.add(torchLight);
+
+            const controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = false;
+            controls.enableZoom = false;
+
+            return { scene, camera, renderer, controls };
+        }
+
+        // --- PRE-CALCULATE THE SOCCER BALL GEOMETRY ---
+        const phi = (1 + Math.sqrt(5)) / 2;
+        const points = [];
+        function addPermutations(x, y, z) {
+            const xs = x === 0 ? [0] : [x, -x];
+            const ys = y === 0 ? [0] : [y, -y];
+            const zs = z === 0 ? [0] : [z, -z];
+            for (const ix of xs) {
+                for (const iy of ys) {
+                    for (const iz of zs) {
+                        points.push(new THREE.Vector3(ix, iy, iz));
+                        points.push(new THREE.Vector3(iy, iz, ix));
+                        points.push(new THREE.Vector3(iz, ix, iy));
+                    }
+                }
+            }
+        }
+        addPermutations(0, 1, 3 * phi);
+        addPermutations(1, 2 + phi, 2 * phi);
+        addPermutations(2, 1 + 2 * phi, phi);
+        const soccerGeometry = new ConvexGeometry(points);
+
+
+        // --- 1. Init Origin Block (With Filtered, Subtle Cut Lines) ---
+        const originSetup = createSceneSetup('origin-canvas', 15);
+
+        const originRadius = (6 / 4) * Math.sqrt(10 + 2 * Math.sqrt(5));
+        const originGeometry = new THREE.IcosahedronGeometry(originRadius, 0);
+        const originMaterial = new THREE.MeshStandardMaterial({
+            color: 0x2980b9, roughness: 1.0, metalness: 0.0, flatShading: true
+        });
+        const originMesh = new THREE.Mesh(originGeometry, originMaterial);
+        originSetup.scene.add(originMesh);
+
+        // MATHEMATICS: Filter out the inner hexagon lines to only show the cuts
+        const icoDirs = [];
+        const baseDirs = [
+            [0, 1, phi], [0, -1, phi], [0, 1, -phi], [0, -1, -phi],
+            [1, phi, 0], [-1, phi, 0], [1, -phi, 0], [-1, -phi, 0],
+            [phi, 0, 1], [-phi, 0, 1], [phi, 0, -1], [-phi, 0, -1]
+        ];
+        baseDirs.forEach(d => icoDirs.push(new THREE.Vector3(d[0], d[1], d[2]).normalize()));
+
+        function getCluster(v) {
+            let maxDot = -Infinity;
+            let bestIndex = -1;
+            const vn = v.clone().normalize();
+            for(let i = 0; i < 12; i++) {
+                const dot = vn.dot(icoDirs[i]);
+                if (dot > maxDot) { maxDot = dot; bestIndex = i; }
+            }
+            return bestIndex;
+        }
+
+        const fullEdges = new THREE.EdgesGeometry(soccerGeometry);
+        const edgesPos = fullEdges.attributes.position;
+        const cutPositions = [];
+        for (let i = 0; i < edgesPos.count; i += 2) {
+            const v1 = new THREE.Vector3().fromBufferAttribute(edgesPos, i);
+            const v2 = new THREE.Vector3().fromBufferAttribute(edgesPos, i + 1);
+
+            if (getCluster(v1) === getCluster(v2)) {
+                cutPositions.push(v1.x, v1.y, v1.z);
+                cutPositions.push(v2.x, v2.y, v2.z);
+            }
+        }
+
+        const cutGeometry = new THREE.BufferGeometry();
+        cutGeometry.setAttribute('position', new THREE.Float32BufferAttribute(cutPositions, 3));
+
+        // FIX: Replaced pure white with a subtle translucent light blue
+        const cutLines = new THREE.LineSegments(cutGeometry, new THREE.LineBasicMaterial({
+            color: 0x6ab0de, // Lightened version of the base blue (0x2980b9)
+            transparent: true,
+            opacity: 0.15,
+            linewidth: 1
+        }));
+        cutLines.scale.set(1.01, 1.01, 1.01);
+        originSetup.scene.add(cutLines);
+
+
+        // --- 2. Init Soccer Ball (Truncated Icosahedron) ---
+        const soccerSetup = createSceneSetup('soccer-canvas', 15);
+        const soccerMaterial = new THREE.MeshStandardMaterial({
+            color: 0x2ecc71, roughness: 1.0, metalness: 0.0, flatShading: true
+        });
+        const soccerMesh = new THREE.Mesh(soccerGeometry, soccerMaterial);
+        soccerSetup.scene.add(soccerMesh);
+
+
+        // --- 3. Init Regular Dodecahedron ---
+        const dodecaSetup = createSceneSetup('dodeca-canvas', 10);
+        const dodecaGeometry = new THREE.DodecahedronGeometry(3, 0);
+        const dodecaMaterial = new THREE.MeshStandardMaterial({
+            color: 0xf39c12, roughness: 1.0, metalness: 0.0, flatShading: true
+        });
+        const dodecaMesh = new THREE.Mesh(dodecaGeometry, dodecaMaterial);
+        dodecaSetup.scene.add(dodecaMesh);
+
+
+        // --- 4. Init D20 (Regular Icosahedron) ---
+        const d20Setup = createSceneSetup('d20-canvas', 10);
+        const d20Geometry = new THREE.IcosahedronGeometry(3, 0);
+        const d20Material = new THREE.MeshStandardMaterial({
+            color: 0xe74c3c, roughness: 1.0, metalness: 0.0, flatShading: true
+        });
+        const d20Mesh = new THREE.Mesh(d20Geometry, d20Material);
+        d20Setup.scene.add(d20Mesh);
+
+
+        // --- 5. Shared Animation Loop ---
+        function animate() {
+            requestAnimationFrame(animate);
+
+            originSetup.renderer.render(originSetup.scene, originSetup.camera);
+            soccerSetup.renderer.render(soccerSetup.scene, soccerSetup.camera);
+            dodecaSetup.renderer.render(dodecaSetup.scene, dodecaSetup.camera);
+            d20Setup.renderer.render(d20Setup.scene, d20Setup.camera);
+        }
+
+        animate();
+    </script>
+</body>
+</html>
