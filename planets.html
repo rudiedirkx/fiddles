@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #fff;
+            font-family: sans-serif;
+        }
+        canvas {
+            display: block;
+        }
+        #ui {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(255, 255, 255, 0.95);
+            border: 1px solid #ccc;
+            padding: 15px;
+            font-size: 14px;
+            line-height: 1.4;
+            pointer-events: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            z-index: 10;
+        }
+        .body-info {
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        .body-info:last-of-type {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="ui"></div>
+    <canvas id="c"></canvas>
+
+    <script>
+        const canvas = document.getElementById('c');
+        const ctx = canvas.getContext('2d');
+        const ui = document.getElementById('ui');
+
+        const AU = 149.5978707;
+        const EARTH_MASS = 5.972e24;
+        const EARTH_DIAM = 12742;
+
+        const bodies = [
+            { name: 'Sun',     dist: 0,       diam: 1392700, mass: 1.989e30 },
+            { name: 'Mercury', dist: 57.9,    diam: 4880,    mass: 3.301e23 },
+            { name: 'Venus',   dist: 108.2,   diam: 12104,   mass: 4.867e24 },
+            { name: 'Earth',   dist: AU,      diam: EARTH_DIAM, mass: EARTH_MASS },
+            { name: 'Mars',    dist: 227.9,   diam: 6779,    mass: 6.417e23 },
+            { name: 'Jupiter', dist: 778.5,   diam: 139820,  mass: 1.898e27 },
+            { name: 'Saturn',  dist: 1432.0,  diam: 116460,  mass: 5.683e26 },
+            { name: 'Uranus',  dist: 2867.0,  diam: 50724,   mass: 8.681e25 },
+            { name: 'Neptune', dist: 4515.0,  diam: 49244,   mass: 1.024e26 },
+            { name: 'Pluto',   dist: 5906.0,  diam: 2376,    mass: 1.303e22 }
+        ];
+
+        let selectedBodies = [];
+
+        function formatDistance(distInMkm) {
+            const distInAU = distInMkm / AU;
+            if (distInAU < 10) {
+                return `${distInAU.toFixed(1)} AU / ${distInMkm.toFixed(1)} M km`;
+            } else {
+                return `${Math.round(distInAU)} AU / ${Math.round(distInMkm)} M km`;
+            }
+        }
+
+        function formatRelativeMass(mass) {
+            const relative = mass / EARTH_MASS;
+            if (Math.abs(relative - 1) < 0.001) return '1 Earth';
+            if (relative >= 100) return `${Math.round(relative).toLocaleString()} Earths`;
+            if (relative >= 1) return `${relative.toFixed(1)} Earths`;
+            return `${relative.toFixed(3)} Earths`;
+        }
+
+        function formatRelativeDiam(diam) {
+            const relative = diam / EARTH_DIAM;
+            if (Math.abs(relative - 1) < 0.001) return '1 Earth';
+            if (relative >= 10) return `${Math.round(relative)} Earths`;
+            return `${relative.toFixed(2)} Earths`;
+        }
+
+        function updateUI() {
+            if (selectedBodies.length === 0) {
+                ui.innerHTML = `Line height = Relative Diameter<br>
+                                Circle area = Relative Mass<br><br>
+                                Click a planet's center cross to select it.<br>
+                                Select two to measure distances.`;
+                return;
+            }
+
+            let html = '';
+            selectedBodies.forEach(b => {
+                html += `<div class="body-info">`;
+                html += `<strong>${b.name}</strong><br>`;
+                html += `Orbit: ${formatDistance(b.dist)}<br>`;
+                html += `Diam: ${formatRelativeDiam(b.diam)}<br>`;
+                html += `Mass: ${formatRelativeMass(b.mass)}`;
+                html += `</div>`;
+            });
+
+            if (selectedBodies.length === 2) {
+                const b1 = selectedBodies[0];
+                const b2 = selectedBodies[1];
+
+                const minDist = Math.abs(b1.dist - b2.dist);
+                const maxDist = b1.dist + b2.dist;
+
+                html += `<div class="body-info">`;
+                html += `<strong>Distance (Circular Orbits):</strong><br>`;
+                html += `Min: ${formatDistance(minDist)}<br>`;
+                html += `Max: ${formatDistance(maxDist)}`;
+                html += `</div>`;
+            }
+            ui.innerHTML = html;
+        }
+
+        function draw() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            const padding = 10;
+            const centerY = canvas.height / 2;
+            const massCenterY = canvas.height * 0.25;
+
+            const maxScreenHeight = canvas.height - (padding * 2);
+            const vScale = (maxScreenHeight * 2) / bodies[0].diam;
+
+            const maxDist = bodies[bodies.length - 1].dist;
+            const hScale = (canvas.width - (padding * 2)) / maxDist;
+
+            const earthMassRadius = 10;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Horizontal center line
+            ctx.strokeStyle = '#000';
+            ctx.beginPath();
+            ctx.lineWidth = 1;
+            ctx.moveTo(padding, centerY);
+            ctx.lineTo(canvas.width - padding, centerY);
+            ctx.stroke();
+
+            // Draw elements for each body
+            bodies.forEach((body, index) => {
+                const x = padding + (body.dist * hScale);
+                let h = body.diam * vScale;
+
+                const isSelected = selectedBodies.includes(body);
+                const drawColor = isSelected ? '#ff0000' : '#000';
+
+                // --- 1. Draw Mass Circles (Skip the Sun) ---
+                if (index !== 0) {
+                    const relativeMass = body.mass / EARTH_MASS;
+                    let massRadius = earthMassRadius * Math.sqrt(relativeMass);
+
+                    if (massRadius < 0.5) massRadius = 0.5;
+
+                    ctx.beginPath();
+                    ctx.arc(x, massCenterY, massRadius, 0, Math.PI * 2);
+
+                    // Small planets (Mercury, Mars, Pluto) have radii < 4px
+                    if (massRadius < 4) {
+                        ctx.fillStyle = 'rgba(160, 160, 160, 0.7)';
+                        ctx.fill();
+                    } else {
+                        ctx.fillStyle = 'rgba(150, 150, 150, 0.3)';
+                        ctx.fill();
+                        ctx.strokeStyle = 'rgba(180, 180, 180, 0.5)';
+                        ctx.lineWidth = 1;
+                        ctx.stroke();
+                    }
+                }
+
+                // --- 2. Draw Diameter Vertical Lines ---
+                ctx.strokeStyle = drawColor;
+                ctx.fillStyle = drawColor;
+
+                if (index === 0) {
+                    h = h * 0.5;
+                    ctx.lineWidth = 2;
+                } else {
+                    if (h < 1 && h > 0) h = 1;
+                    ctx.lineWidth = 1;
+                }
+
+                ctx.beginPath();
+                ctx.moveTo(x, centerY - h / 2);
+                ctx.lineTo(x, centerY + h / 2);
+                ctx.stroke();
+
+                // --- 3. Draw Labels ---
+                if (index === 0) {
+                    ctx.font = '16px sans-serif';
+                    ctx.textAlign = 'left';
+                    ctx.textBaseline = 'top';
+                    ctx.fillText('Sun, at 50% height', padding + 5, padding);
+                } else {
+                    ctx.font = 'bold 16px sans-serif';
+                    ctx.textAlign = 'center';
+
+                    if (index === 2 || index === 4) {
+                        ctx.textBaseline = 'bottom';
+                        const topOfPlanetLine = centerY - (h / 2);
+                        ctx.fillText(body.name[0], x, topOfPlanetLine - 5);
+                    } else {
+                        ctx.textBaseline = 'top';
+                        const bottomOfPlanetLine = centerY + (h / 2);
+                        ctx.fillText(body.name[0], x, bottomOfPlanetLine + 5);
+                    }
+                }
+            });
+        }
+
+        // Handle precise clicking
+        window.addEventListener('click', (e) => {
+            const clickX = e.clientX;
+            const clickY = e.clientY;
+
+            const padding = 10;
+            const centerY = window.innerHeight / 2;
+            const maxDist = bodies[bodies.length - 1].dist;
+            const hScale = (window.innerWidth - (padding * 2)) / maxDist;
+
+            let clickedBody = null;
+            let closestDistance = Infinity;
+            const clickRadius = 15;
+
+            for (let body of bodies) {
+                const bodyX = padding + (body.dist * hScale);
+
+                const distX = clickX - bodyX;
+                const distY = clickY - centerY;
+                const distanceToCross = Math.sqrt((distX * distX) + (distY * distY));
+
+                if (distanceToCross <= clickRadius && distanceToCross < closestDistance) {
+                    closestDistance = distanceToCross;
+                    clickedBody = body;
+                }
+            }
+
+            if (clickedBody) {
+                const index = selectedBodies.indexOf(clickedBody);
+                if (index > -1) {
+                    selectedBodies.splice(index, 1);
+                } else {
+                    if (selectedBodies.length >= 2) selectedBodies.shift();
+                    selectedBodies.push(clickedBody);
+                }
+                updateUI();
+                draw();
+            }
+        });
+
+        window.addEventListener('resize', draw);
+
+        draw();
+        updateUI();
+    </script>
+
+</body>
+</html>
