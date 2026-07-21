@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Countries</title>
+    <style>
+        body {
+            background-color: #0a0a0a;
+            color: #eee;
+            font-family: sans-serif;
+            margin: 0;
+            padding: 10px;
+            box-sizing: border-box;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+            user-select: none;
+        }
+
+        #canvas-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+
+        canvas {
+            display: block;
+            background-color: #0a0a0a;
+            border-radius: 4px;
+            cursor: default;
+        }
+
+        #tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.95);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 14px;
+            pointer-events: none;
+            opacity: 0;
+            border: 1px solid #4facfe;
+            z-index: 10;
+            white-space: nowrap;
+        }
+
+        #ui-container {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 8px;
+            z-index: 10;
+        }
+
+        #search-input {
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 16px;
+            border: 1px solid #555;
+            outline: none;
+            pointer-events: auto;
+            width: 220px;
+            font-family: inherit;
+        }
+
+        #search-input::placeholder {
+            color: #aaa;
+        }
+
+        /* Invert the native dark clear "x" icon so it is visible on the black background */
+        #search-input::-webkit-search-cancel-button {
+            filter: invert(1);
+            cursor: pointer;
+        }
+
+        #compare-box {
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 16px;
+            pointer-events: none;
+            border: 1px solid #555;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="canvas-container">
+        <canvas id="mapCanvas"></canvas>
+        <div id="tooltip"></div>
+
+        <div id="ui-container">
+            <!-- Changed to type="search" -->
+            <input type="search" id="search-input" list="country-list" placeholder="Search country...">
+            <datalist id="country-list"></datalist>
+            <div id="compare-box"></div>
+        </div>
+    </div>
+
+    <script>
+        const dataStr = "Russia:17098242:EU|Canada:9984670:NA|China:9706961:AS|United States:9372610:NA|Brazil:8515767:SA|Australia:7692024:OC|India:3287590:AS|Argentina:2780400:SA|Kazakhstan:2724900:AS|Algeria:2381741:AF|Democratic Republic of the Congo:2344858:AF|Greenland:2166086:NA|Saudi Arabia:2149690:AS|Mexico:1964375:NA|Indonesia:1904569:AS|Sudan:1886068:AF|Libya:1759540:AF|Iran:1648195:AS|Mongolia:1564110:AS|Peru:1285216:SA|Chad:1284000:AF|Niger:1267000:AF|Angola:1246700:AF|Mali:1240192:AF|South Africa:1221037:AF|Colombia:1141748:SA|Ethiopia:1104300:AF|Bolivia:1098581:SA|Mauritania:1030700:AF|Egypt:1002450:AF|Tanzania:945087:AF|Nigeria:923768:AF|Venezuela:916445:SA|Pakistan:881912:AS|Namibia:824292:AF|Mozambique:801590:AF|Turkey:783562:AS|Chile:756102:SA|Zambia:752612:AF|Myanmar:676578:AS|Afghanistan:652230:AS|South Sudan:644329:AF|France:640679:EU|Somalia:637657:AF|Central African Republic:622984:AF|Ukraine:603500:EU|Madagascar:587041:AF|Botswana:581730:AF|Kenya:580367:AF|Yemen:527968:AS|Thailand:513120:AS|Spain:505992:EU|Turkmenistan:491210:AS|Cameroon:475442:AF|Papua New Guinea:462840:OC|Sweden:450295:EU|Uzbekistan:447400:AS|Morocco:446550:AF|Iraq:438317:AS|Paraguay:406752:SA|Zimbabwe:390757:AF|Norway:385207:EU|Japan:377975:AS|Germany:357022:EU|Congo:342000:AF|Finland:338424:EU|Vietnam:331212:AS|Malaysia:330803:AS|Ivory Coast:322463:AF|Poland:312696:EU|Oman:309500:AS|Italy:301340:EU|Philippines:300000:AS|Ecuador:276841:SA|Burkina Faso:274200:AF|New Zealand:268021:OC|Gabon:267668:AF|Western Sahara:266000:AF|Guinea:245857:AF|United Kingdom:242900:EU|Uganda:241550:AF|Ghana:238533:AF|Romania:238391:EU|Laos:236800:AS|Guyana:214969:SA|Belarus:207600:EU|Kyrgyzstan:199951:AS|Senegal:196722:AF|Syria:185180:AS|Cambodia:181035:AS|Uruguay:176215:SA|Suriname:163820:SA|Tunisia:163610:AF|Bangladesh:147570:AS|Nepal:147181:AS|Tajikistan:143100:AS|Greece:131957:EU|Nicaragua:130373:NA|North Korea:120538:AS|Malawi:118484:AF|Eritrea:117600:AF|Benin:112622:AF|Honduras:112492:NA|Liberia:111369:AF|Bulgaria:110879:EU|Cuba:109884:NA|Guatemala:108889:NA|Iceland:103000:EU|South Korea:100210:AS|Hungary:93028:EU|Portugal:92090:EU|Jordan:89342:AS|Serbia:88361:EU|Azerbaijan:86600:AS|Austria:83871:EU|United Arab Emirates:83600:AS|Czechia:78865:EU|Panama:75417:NA|Sierra Leone:71740:AF|Ireland:70273:EU|Georgia:69700:AS|Sri Lanka:65610:AS|Lithuania:65300:EU|Latvia:64589:EU|Togo:56785:AF|Croatia:56594:EU|Bosnia:51197:EU|Costa Rica:51100:NA|Slovakia:49037:EU|Dominican Republic:48671:NA|Estonia:45227:EU|Denmark:43094:EU|Netherlands:41850:EU|Switzerland:41284:EU|Bhutan:38394:AS|Taiwan:36193:AS|Guinea-Bissau:36125:AF|Moldova:33846:EU|Belgium:30528:EU|Lesotho:30355:AF|Armenia:29743:AS|Solomon Islands:28896:OC|Albania:28748:EU|Equatorial Guinea:28051:AF|Burundi:27834:AF|Haiti:27750:NA|Rwanda:26338:AF|North Macedonia:25713:EU|Djibouti:23200:AF|Belize:22966:NA|El Salvador:21041:NA|Israel:20770:AS|Slovenia:20273:EU|Fiji:18272:OC|Kuwait:17818:AS|Eswatini:17364:AF|Timor-Leste:14874:AS|Bahamas:13943:NA|Montenegro:13812:EU|Vanuatu:12189:OC|Qatar:11586:AS|Gambia:10689:AF|Jamaica:10991:NA|Lebanon:10452:AS|Cyprus:9251:EU|Palestine:6020:AS|Brunei:5765:AS|Trinidad & Tobago:5130:NA|Cape Verde:4033:AF|Samoa:2842:OC|Luxembourg:2586:EU|Mauritius:2040:AF|Comoros:1862:AF|Sao Tome:964:AF|Kiribati:811:OC|Bahrain:778:AS|Dominica:751:NA|Tonga:747:OC|Singapore:728:AS|Micronesia:702:OC|Saint Lucia:616:NA|Andorra:468:EU|Palau:459:OC|Seychelles:452:AF|Antigua:442:NA|Barbados:430:NA|Saint Vincent:389:NA|Grenada:344:NA|Malta:316:EU|Maldives:300:AS|Saint Kitts:261:NA|Marshall Islands:181:OC|Liechtenstein:160:EU|San Marino:61:EU|Tuvalu:26:OC|Nauru:21:OC|Monaco:2:EU|Vatican City:0.49:EU";
+
+        const continentColors = {
+            'NA': ['#39ff14', '#006400'],
+            'SA': ['#ff00ff', '#8b008b'],
+            'EU': ['#66b2ff', '#0055cc'],
+            'AF': ['#ffee00', '#b8860b'],
+            'AS': ['#ff0000', '#8b0000'],
+            'OC': ['#ffffff', '#666666']
+        };
+
+        const canvas = document.getElementById('mapCanvas');
+        const container = document.getElementById('canvas-container');
+        const ctx = canvas.getContext('2d');
+        const tooltip = document.getElementById('tooltip');
+        const compareBox = document.getElementById('compare-box');
+        const searchInput = document.getElementById('search-input');
+        const dataList = document.getElementById('country-list');
+
+        let circles = [];
+        let selectedCountries = [];
+        let W, H;
+
+        function init() {
+            W = window.innerWidth - 20;
+            H = window.innerHeight - 20;
+            canvas.width = W;
+            canvas.height = H;
+
+            let countries = dataStr.split('|').map(item => {
+                const [name, areaStr, continent] = item.split(':');
+                return { name, area: parseFloat(areaStr), cont: continent };
+            });
+
+            countries.sort((a, b) => a.area - b.area);
+
+            const minAreaFloor = countries[19].area;
+
+            countries.forEach((c, index) => {
+                c.renderArea = index < 20 ? minAreaFloor : c.area;
+            });
+
+            let targetTotalArea = W * H * 0.55;
+            let baseTotalArea = 0;
+
+            countries.forEach(c => {
+                c.baseR = Math.cbrt(c.renderArea);
+                baseTotalArea += Math.PI * c.baseR * c.baseR;
+            });
+
+            const scaleFactor = Math.sqrt(targetTotalArea / baseTotalArea);
+
+            dataList.innerHTML = '';
+
+            for (let i = 0; i < countries.length; i++) {
+                const c = countries[i];
+                const r = c.baseR * scaleFactor;
+                const pos = findBoundedPosition(r, circles, W, H);
+
+                circles.push({
+                    name: c.name,
+                    area: c.area,
+                    cont: c.cont,
+                    r: r,
+                    x: pos.x,
+                    y: pos.y
+                });
+
+                let opt = document.createElement('option');
+                opt.value = c.name;
+                dataList.appendChild(opt);
+            }
+
+            draw();
+            setupInteractions();
+        }
+
+        function findBoundedPosition(r, placedCircles, maxW, maxH) {
+            const step = 4;
+            let bestPos = null;
+            let minScore = Infinity;
+
+            for (let d = 0; d < Math.max(maxW, maxH) * 2; d += step) {
+                const arcLength = (Math.PI / 2) * d;
+                const angleSteps = Math.max(1, Math.ceil(arcLength / step));
+                const angleInc = (Math.PI / 2) / angleSteps;
+
+                let foundInside = false;
+
+                for (let a = 0; a <= Math.PI / 2 + 0.001; a += angleInc) {
+                    let cx = r + d * Math.cos(a);
+                    let cy = r + d * Math.sin(a);
+
+                    let isOutside = (cx + r > maxW || cy + r > maxH);
+
+                    let overlap = false;
+                    for (let pc of placedCircles) {
+                        let dx = cx - pc.x;
+                        let dy = cy - pc.y;
+                        let minReqDist = r + pc.r + 1;
+
+                        if ((dx * dx + dy * dy) < (minReqDist * minReqDist)) {
+                            overlap = true;
+                            break;
+                        }
+                    }
+
+                    if (!overlap) {
+                        let score = d + (isOutside ? 100000 : 0);
+                        if (score < minScore) {
+                            minScore = score;
+                            bestPos = { x: cx, y: cy };
+                        }
+                        if (!isOutside) foundInside = true;
+                    }
+                }
+
+                if (foundInside) {
+                    return bestPos;
+                }
+            }
+            return bestPos || { x: r, y: r };
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const drawOrder = [...circles].sort((a, b) => b.area - a.area);
+
+            drawOrder.forEach(circle => {
+                ctx.beginPath();
+                ctx.arc(circle.x, circle.y, circle.r, 0, Math.PI * 2);
+
+                const colors = continentColors[circle.cont] || ['#74ebd5', '#005f9e'];
+                const gradient = ctx.createRadialGradient(
+                    circle.x - circle.r*0.3, circle.y - circle.r*0.3, 0,
+                    circle.x, circle.y, circle.r
+                );
+                gradient.addColorStop(0, colors[0]);
+                gradient.addColorStop(1, colors[1]);
+
+                ctx.fillStyle = gradient;
+                ctx.fill();
+
+                const isSelected = selectedCountries.includes(circle);
+                ctx.strokeStyle = isSelected ? '#ffffff' : 'rgba(255,255,255,0.3)';
+                ctx.lineWidth = isSelected ? 3 : 1;
+                ctx.stroke();
+            });
+        }
+
+        function updateSelectionUI() {
+            if (selectedCountries.length === 0) {
+                compareBox.style.display = 'none';
+            } else if (selectedCountries.length === 1) {
+                compareBox.innerHTML = `Selected ${selectedCountries[0].name}...`;
+                compareBox.style.display = 'block';
+            } else {
+                let sorted = [...selectedCountries].sort((a, b) => b.area - a.area);
+
+                let textParts = [];
+                for (let i = 0; i < sorted.length - 1; i++) {
+                    let big = sorted[i];
+                    let small = sorted[i+1];
+                    let ratio = (big.area / small.area).toFixed(1);
+
+                    if (i === 0) {
+                        textParts.push(`${big.name} is ${ratio} times ${small.name}`);
+                    } else {
+                        textParts.push(`is ${ratio} times ${small.name}`);
+                    }
+                }
+
+                compareBox.innerHTML = textParts.join(' ');
+                compareBox.style.display = 'block';
+            }
+            draw();
+        }
+
+        function setupInteractions() {
+            tooltip.style.opacity = '0';
+            tooltip.style.display = 'block';
+
+            function getHoveredCircle(e) {
+                const rect = canvas.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+
+                const hoverOrder = [...circles].sort((a, b) => a.area - b.area);
+                for (let c of hoverOrder) {
+                    const dx = mouseX - c.x;
+                    const dy = mouseY - c.y;
+                    if (dx * dx + dy * dy <= c.r * c.r) {
+                        return c;
+                    }
+                }
+                return null;
+            }
+
+            container.addEventListener('mousemove', (e) => {
+                const hoveredCircle = getHoveredCircle(e);
+
+                if (hoveredCircle) {
+                    tooltip.innerHTML = `
+                        <strong>${hoveredCircle.name}</strong><br>
+                        ${hoveredCircle.area.toLocaleString()} km²
+                    `;
+
+                    const rect = canvas.getBoundingClientRect();
+                    tooltip.style.left = `${(e.clientX - rect.left) + 2}px`;
+                    tooltip.style.top = `${(e.clientY - rect.top) + 2}px`;
+                    tooltip.style.opacity = 1;
+
+                    canvas.style.cursor = 'pointer';
+                } else {
+                    tooltip.style.opacity = 0;
+                    canvas.style.cursor = 'default';
+                }
+            });
+
+            container.addEventListener('mouseleave', () => {
+                tooltip.style.opacity = 0;
+                canvas.style.cursor = 'default';
+            });
+
+            container.addEventListener('click', (e) => {
+                const clickedCircle = getHoveredCircle(e);
+
+                if (clickedCircle) {
+                    const isSelected = selectedCountries.includes(clickedCircle);
+
+                    if (isSelected) {
+                        selectedCountries = selectedCountries.filter(c => c !== clickedCircle);
+                    } else {
+                        if (selectedCountries.length >= 4) {
+                            return;
+                        }
+                        selectedCountries.push(clickedCircle);
+                    }
+
+                    updateSelectionUI();
+                }
+            });
+
+            searchInput.addEventListener('input', (e) => {
+                const val = e.target.value;
+                const matchedCircle = circles.find(c => c.name === val);
+
+                if (matchedCircle) {
+                    const isSelected = selectedCountries.includes(matchedCircle);
+
+                    if (!isSelected && selectedCountries.length < 4) {
+                        selectedCountries.push(matchedCircle);
+                        updateSelectionUI();
+                    }
+                }
+            });
+        }
+
+        init();
+
+        window.addEventListener('resize', () => {
+            circles = [];
+            selectedCountries = [];
+            updateSelectionUI();
+            init();
+        });
+    </script>
+</body>
+</html>
