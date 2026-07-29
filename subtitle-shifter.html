@@ -32,10 +32,14 @@
             align-items: center;
             flex-wrap: wrap;
         }
-        input[type="file"], .search-box {
+        input[type="file"], .search-box, .fps-select {
             padding: 0.5rem;
             border: 1px solid #d4d4d8;
             border-radius: 4px;
+        }
+        .fps-select {
+            background-color: white;
+            cursor: pointer;
         }
         .search-box {
             flex-grow: 1;
@@ -152,7 +156,7 @@
             font-size: 2.5rem;
             font-weight: bold;
             color: #3b82f6;
-            pointer-events: none; /* Let the drop event pass through */
+            pointer-events: none;
         }
         body.dragging #dragOverlay {
             display: flex;
@@ -161,13 +165,20 @@
 </head>
 <body>
 
-    <div id="dragOverlay">Drop .srt file anywhere</div>
+    <div id="dragOverlay">Drop .srt or .sub file anywhere</div>
 
     <div class="container">
         <h1>Better Subtitle Shifter</h1>
 
         <div class="controls">
-            <input type="file" id="srtFile" accept=".srt">
+            <input type="file" id="srtFile" accept=".srt,.sub">
+            <select id="fpsSelector" class="fps-select" title="Required to convert .sub frames to time">
+                <option value="23.976">23.976 FPS</option>
+                <option value="24">24.000 FPS</option>
+                <option value="25">25.000 FPS</option>
+                <option value="29.97">29.970 FPS</option>
+                <option value="30">30.000 FPS</option>
+            </select>
             <input type="search" id="searchBox" class="search-box" placeholder="Search subtitle text to filter (Press '/' to focus)..." disabled>
             <div id="counter">0 / 0 filled</div>
             <button id="calcBtn" disabled>Calculate</button>
@@ -206,9 +217,12 @@
         const counterDisplay = document.getElementById('counter');
         const graphContainer = document.getElementById('graphContainer');
         const shiftGraph = document.getElementById('shiftGraph');
+        const fpsSelector = document.getElementById('fpsSelector');
 
         let srtBlocksData = [];
         let modifiedSrtText = "";
+        let globalRawText = "";
+        let globalFileName = "";
 
         // --- Drag and Drop ---
         let dragTimer;
@@ -231,13 +245,12 @@
 
             const files = e.dataTransfer.files;
             if (files && files.length > 0) {
-                if (files[0].name.toLowerCase().endsWith('.srt')) {
-                    // Direct assignment to the file input
+                const name = files[0].name.toLowerCase();
+                if (name.endsWith('.srt') || name.endsWith('.sub')) {
                     fileInput.files = files;
-                    // Trigger the change event so the existing logic takes over
                     fileInput.dispatchEvent(new Event('change'));
                 } else {
-                    showError("Please drop a valid .srt file.");
+                    showError("Please drop a valid .srt or .sub file.");
                 }
             }
         });
@@ -294,22 +307,129 @@
             errorMsg.style.display = msg ? 'block' : 'none';
         }
 
-        fileInput.addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (!file) return;
+        // --- SUB to SRT Converter ---
+        function convertSubToSrt(subText, fps) {
+            const lines = subText.replace(/\r\n/g, '\n').split('\n');
+            let srtText = '';
+            let counter = 1;
 
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                processSRT(e.target.result);
+            lines.forEach(line => {
+                const match = line.match(/^\{(\d+)\}\{(\d+)\}(.*)/);
+                if (match) {
+                    const startFrame = parseInt(match[1], 10);
+                    const endFrame = parseInt(match[2], 10);
+
+                    // Skip the `{1}{1}25.000` header line so it doesn't render as text
+                    if (startFrame === 1 && endFrame === 1 && !isNaN(parseFloat(match[3]))) {
+                        return;
+                    }
+
+                    let text = match[3].replace(/\|/g, '\n');
+
+                    const startMs = (startFrame / fps) * 1000;
+                    const endMs = (endFrame / fps) * 1000;
+
+                    srtText += `${counter}\n`;
+                    srtText += `${msToTime(startMs)} --> ${msToTime(endMs)}\n`;
+                    srtText += `${text}\n\n`;
+                    counter++;
+                }
+            });
+            return srtText.trim();
+        }
+
+        function loadSubtitleData(preserveInputs = false, checkFpsHeader = false) {
+            let text = globalRawText;
+            const isSub = globalFileName.endsWith('.sub');
+
+            // Save inputs to restore after table rebuild
+            const savedInputs = {};
+            if (preserveInputs) {
+                tableBody.querySelectorAll('.filled-row').forEach(tr => {
+                    savedInputs[tr.dataset.blockIndex] = tr.querySelector('.time-input').value;
+                });
+            }
+
+            if (isSub) {
+                // Auto-detect FPS from the first {1}{1} line if loading for the first time
+                if (checkFpsHeader) {
+                    const lines = text.replace(/\r\n/g, '\n').split('\n');
+                    if (lines.length > 0) {
+                        const fpsMatch = lines[0].match(/^\{1\}\{1\}([\d\.]+)/);
+                        if (fpsMatch && fpsMatch[1]) {
+                            const detectedFps = parseFloat(fpsMatch[1]);
+                            if (!isNaN(detectedFps)) {
+                                // Add it to dropdown if it doesn't strictly match a default option
+                                let optionExists = Array.from(fpsSelector.options).some(opt => parseFloat(opt.value) === detectedFps);
+                                if (!optionExists) {
+                                    const newOption = new Option(`${detectedFps} FPS (Detected)`, detectedFps);
+                                    fpsSelector.add(newOption);
+                                }
+                                fpsSelector.value = detectedFps;
+                            }
+                        }
+                    }
+                }
+
+                const fps = parseFloat(fpsSelector.value) || 23.976;
+                text = convertSubToSrt(text, fps);
+            }
+
+            processSRT(text);
+
+            // Restore inputs & UI state
+            if (preserveInputs) {
+                Object.keys(savedInputs).forEach(idx => {
+                    const tr = tableBody.querySelector(`tr[data-block-index="${idx}"]`);
+                    if (tr) {
+                        const input = tr.querySelector('.time-input');
+                        input.value = savedInputs[idx];
+                        input.dataset.touched = 'true';
+                        tr.classList.add('filled-row');
+                    }
+                });
+                updateCounter();
+
+                // Clear any graph/calcs since timestamps shifted underneath them
+                downloadBtn.disabled = true;
+                graphContainer.style.display = 'none';
+                tableBody.querySelectorAll('.calc-time').forEach(el => el.innerText = '-');
+                tableBody.querySelectorAll('.shift-badge').forEach(el => el.innerText = '');
+
+                filterTable();
+
+            } else {
                 searchBox.disabled = false;
+                searchBox.value = '';
                 calcBtn.disabled = false;
                 downloadBtn.disabled = true;
                 subTable.style.display = 'table';
                 graphContainer.style.display = 'none';
                 showError('');
                 searchBox.focus();
+                filterTable();
+            }
+        }
+
+        fileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            globalFileName = file.name.toLowerCase();
+            const reader = new FileReader();
+
+            reader.onload = function(e) {
+                globalRawText = e.target.result;
+                loadSubtitleData(false, true); // true = run the FPS detector
             };
             reader.readAsText(file);
+        });
+
+        // Recalculate everything seamlessly when FPS dropdown changes manually
+        fpsSelector.addEventListener('change', function() {
+            if (globalFileName.endsWith('.sub')) {
+                loadSubtitleData(true, false); // false = don't override their manual choice
+            }
         });
 
         function processSRT(srtText) {
@@ -557,8 +677,11 @@
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
 
-            let origName = fileInput.files[0].name;
-            let newName = origName.replace(/\.srt$/i, '') + '_shifted.srt';
+            let origName = globalFileName;
+            if (fileInput.files.length > 0) {
+                origName = fileInput.files[0].name;
+            }
+            let newName = origName.replace(/\.(srt|sub)$/i, '') + '_shifted.srt';
 
             a.href = url;
             a.download = newName;
