@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fallout 3 Bobbleheads</title>
+</head>
+<body>
+
+  <div style="overflow-x: auto;">
+    <table border="1" style="border-collapse: collapse; min-width: 100%; text-align: left;">
+      <thead>
+        <tr>
+          <th>✔</th>
+          <th>Type</th>
+          <th>Location</th>
+        </tr>
+      </thead>
+      <tbody id="bh-body"></tbody>
+    </table>
+  </div>
+
+  <script>
+  const bobbleheads = [
+    {id:'bh-str', type:'Strength', loc:'Megaton', detail:"Lucas Simms' house"},
+    {id:'bh-per', type:'Perception', loc:'Republic of Dave', detail:"Museum of Dave"},
+    {id:'bh-end', type:'Endurance', loc:'Deathclaw Sanctuary', detail:"Entrance, near the Brahmin corpse"},
+    {id:'bh-cha', type:'Charisma', loc:'Vault 108', detail:"Cloning Lab"},
+    {id:'bh-int', type:'Intelligence', loc:'Rivet City', detail:"Science Lab, on Dr. Li's table"},
+    {id:'bh-agi', type:'Agility', loc:'Greener Pastures Disposal Site', detail:"Office"},
+    {id:'bh-luc', type:'Luck', loc:'Arlington House', detail:"Cellar, on a shelf"},
+    {id:'bh-bar', type:'Barter', loc:'Evergreen Mills', detail:"Market Bazaar, Jack's alcove"},
+    {id:'bh-big', type:'Big Guns', loc:'Fort Constantine', detail:"CO Quarters, in the basement safe"},
+    {id:'bh-ene', type:'Energy Weapons', loc:'Raven Rock', detail:"Level 2, Colonel Autumn's bedroom"},
+    {id:'bh-exp', type:'Explosives', loc:'WKML Broadcast Station', detail:"Sealed Cistern"},
+    {id:'bh-loc', type:'Lockpick', loc:'Bethesda Ruins', detail:"Bethesda Offices East, top floor"},
+    {id:'bh-med', type:'Medicine', loc:'Vault 101', detail:"Dad's Clinic, on the desk"},
+    {id:'bh-mel', type:'Melee Weapons', loc:'Dunwich Building', detail:"Virulent Underchambers"},
+    {id:'bh-rep', type:'Repair', loc:'Arefu', detail:"Evan King's House"},
+    {id:'bh-sci', type:'Science', loc:'Vault 106', detail:"Living Quarters"},
+    {id:'bh-sma', type:'Small Guns', loc:'National Guard Depot', detail:"Armory Bunker"},
+    {id:'bh-sne', type:'Sneak', loc:'Yao Guai Tunnels', detail:"Den"},
+    {id:'bh-spe', type:'Speech', loc:'Paradise Falls', detail:"Eulogy's Pad, on the table"},
+    {id:'bh-una', type:'Unarmed', loc:'Rockopolis', detail:"Next to Argyle's body"}
+  ];
+
+  const tbody = document.getElementById('bh-body');
+
+  bobbleheads.forEach(b => {
+    tbody.innerHTML += `
+      <tr>
+        <td><input type="checkbox" id="${b.id}"></td>
+        <td>${b.type}</td>
+        <td>
+          <details>
+            <summary>${b.loc}</summary>
+            <small>${b.detail}</small>
+          </details>
+        </td>
+      </tr>
+    `;
+  });
+
+  document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+    cb.checked = localStorage.getItem(cb.id) === 'true';
+    cb.addEventListener('change', (e) => {
+      localStorage.setItem(e.target.id, e.target.checked);
+    });
+  });
+  </script>
+
+</body>
+</html>
