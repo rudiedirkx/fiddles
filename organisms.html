@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Organism Counter Visualizer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            color: #222;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            max-width: 900px;
+        }
+        th, td {
+            border: 1px solid #999;
+        }
+        th {
+            background-color: #eee;
+            padding: 8px;
+            cursor: pointer;
+            text-align: left;
+        }
+        th:hover {
+            background-color: #ddd;
+        }
+        td {
+            position: relative;
+            text-align: left;
+        }
+        td:first-child {
+            padding: 8px;
+        }
+        .bar {
+            position: absolute;
+            top: 0; left: 0; bottom: 0;
+            background-color: #d0e4f5;
+            z-index: 1;
+        }
+        .content {
+            position: relative;
+            z-index: 2;
+            padding: 8px;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+
+    <table id="organismTable">
+        <thead>
+            <tr>
+                <th onclick="sortTable(0)">Organism</th>
+                <th onclick="sortTable(1)">Biomass (M Tons)</th>
+                <th onclick="sortTable(2)">Individuals</th>
+                <th onclick="sortTable(3)">Species</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Antarctic Krill</td>
+                <td data-value="450">450M</td>
+                <td data-value="500000000000000">500T</td>
+                <td data-value="1">1</td>
+            </tr>
+            <tr>
+                <td>Ants</td>
+                <td data-value="70">70M</td>
+                <td data-value="20000000000000000">20,000T</td>
+                <td data-value="15000">15k</td>
+            </tr>
+            <tr>
+                <td>Beetles</td>
+                <td data-value="250">250M</td>
+                <td data-value="100000000000000">100T</td>
+                <td data-value="400000">400k</td>
+            </tr>
+            <tr>
+                <td>Bony Fish</td>
+                <td data-value="2000">2,000M</td>
+                <td data-value="10000000000000">10T</td>
+                <td data-value="32000">32k</td>
+            </tr>
+            <tr>
+                <td>Chickens</td>
+                <td data-value="50">50M</td>
+                <td data-value="33000000000">33B</td>
+                <td data-value="1">1</td>
+            </tr>
+            <tr>
+                <td>Cows</td>
+                <td data-value="650">650M</td>
+                <td data-value="1500000000">1.5B</td>
+                <td data-value="1">1</td>
+            </tr>
+            <tr>
+                <td>Earthworms</td>
+                <td data-value="1500">1,500M</td>
+                <td data-value="1000000000000">1T</td>
+                <td data-value="7000">7k</td>
+            </tr>
+            <tr>
+                <td>Humans</td>
+                <td data-value="450">450M</td>
+                <td data-value="8100000000">8.1B</td>
+                <td data-value="1">1</td>
+            </tr>
+            <tr>
+                <td>Pigs</td>
+                <td data-value="100">100M</td>
+                <td data-value="1000000000">1B</td>
+                <td data-value="1">1</td>
+            </tr>
+            <tr>
+                <td>Wild Mammals</td>
+                <td data-value="20">20M</td>
+                <td data-value="10000000000">10B</td>
+                <td data-value="5500">5.5k</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const table = document.getElementById("organismTable");
+            const rows = Array.from(table.rows).slice(1);
+
+            // Column 1: Biomass (Linear Scale)
+            let maxBiomass = Math.max(...rows.map(r => parseFloat(r.cells[1].getAttribute("data-value"))));
+            rows.forEach(r => renderCellBar(r.cells[1], parseFloat(r.cells[1].getAttribute("data-value")) / maxBiomass * 100));
+
+            // Column 2: Individuals (Log10 Scale)
+            let maxLogIndiv = Math.max(...rows.map(r => Math.log10(parseFloat(r.cells[2].getAttribute("data-value")))));
+            rows.forEach(r => {
+                let val = parseFloat(r.cells[2].getAttribute("data-value"));
+                let pct = (Math.max(1, Math.log10(val)) / maxLogIndiv) * 100;
+                renderCellBar(r.cells[2], pct);
+            });
+
+            // Column 3: Species (Log10 Scale)
+            let maxLogSpecies = Math.max(...rows.map(r => Math.log10(parseFloat(r.cells[3].getAttribute("data-value")))));
+            rows.forEach(r => {
+                let val = parseFloat(r.cells[3].getAttribute("data-value"));
+                let pct = (Math.max(1, Math.log10(val)) / maxLogSpecies) * 100;
+                renderCellBar(r.cells[3], pct);
+            });
+        });
+
+        function renderCellBar(cell, pct) {
+            let text = cell.innerText;
+            cell.innerHTML = `
+                <div class="bar" style="width: ${Math.max(0.5, pct)}%;"></div>
+                <span class="content">${text}</span>
+            `;
+        }
+
+        function sortTable(n) {
+            var table = document.getElementById("organismTable");
+            var tbody = table.tBodies[0];
+            var rows = Array.from(tbody.rows);
+
+            var dir = table.getAttribute("data-sort-dir-" + n) === "asc" ? "desc" : "asc";
+            table.setAttribute("data-sort-dir-" + n, dir);
+
+            rows.sort(function(a, b) {
+                var x = a.cells[n].getAttribute("data-value");
+                var y = b.cells[n].getAttribute("data-value");
+
+                var xVal = x ? parseFloat(x) : a.cells[n].innerText.toLowerCase();
+                var yVal = y ? parseFloat(y) : b.cells[n].innerText.toLowerCase();
+
+                if (xVal < yVal) return dir === "asc" ? -1 : 1;
+                if (xVal > yVal) return dir === "asc" ? 1 : -1;
+                return 0;
+            });
+
+            rows.forEach(row => tbody.appendChild(row));
+        }
+    </script>
+</body>
+</html>
