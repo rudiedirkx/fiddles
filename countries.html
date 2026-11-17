@@ -15,6 +15,7 @@
             overflow: hidden;
             width: 100vw;
             height: 100vh;
+            height: 100dvh;
             user-select: none;
         }
 
@@ -29,6 +30,7 @@
             background-color: #0a0a0a;
             border-radius: 4px;
             cursor: default;
+            touch-action: manipulation;
         }
 
         #tooltip {
@@ -130,10 +132,18 @@
         let W, H;
 
         function init() {
-            W = window.innerWidth - 20;
-            H = window.innerHeight - 20;
-            canvas.width = W;
-            canvas.height = H;
+            W = container.clientWidth;
+            H = container.clientHeight;
+
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = Math.round(W * dpr);
+            canvas.height = Math.round(H * dpr);
+            canvas.style.width = `${W}px`;
+            canvas.style.height = `${H}px`;
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+            const selectedNames = selectedCountries.map(c => c.name);
+            circles = [];
 
             let countries = dataStr.split('|').map(item => {
                 const [name, areaStr, continent] = item.split(':');
@@ -179,8 +189,8 @@
                 dataList.appendChild(opt);
             }
 
-            draw();
-            setupInteractions();
+            selectedCountries = circles.filter(c => selectedNames.includes(c.name));
+            updateSelectionUI();
         }
 
         function findBoundedPosition(r, placedCircles, maxW, maxH) {
@@ -231,7 +241,7 @@
         }
 
         function draw() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.clearRect(0, 0, W, H);
 
             const drawOrder = [...circles].sort((a, b) => b.area - a.area);
 
@@ -315,8 +325,12 @@
                     `;
 
                     const rect = canvas.getBoundingClientRect();
-                    tooltip.style.left = `${(e.clientX - rect.left) + 2}px`;
-                    tooltip.style.top = `${(e.clientY - rect.top) + 2}px`;
+                    const maxLeft = W - tooltip.offsetWidth;
+                    const maxTop = H - tooltip.offsetHeight;
+                    const left = Math.min((e.clientX - rect.left) + 2, maxLeft);
+                    const top = Math.min((e.clientY - rect.top) + 2, maxTop);
+                    tooltip.style.left = `${left}px`;
+                    tooltip.style.top = `${top}px`;
                     tooltip.style.opacity = 1;
 
                     canvas.style.cursor = 'pointer';
@@ -366,11 +380,12 @@
         }
 
         init();
+        setupInteractions();
 
         window.addEventListener('resize', () => {
-            circles = [];
-            selectedCountries = [];
-            updateSelectionUI();
+            if (container.clientWidth === W) {
+                return;
+            }
             init();
         });
     </script>
